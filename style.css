@@ -10,7 +10,7 @@ html, body {
   background: #1a1a2e;
   color: #eee;
   font-family: 'Segoe UI', Arial, sans-serif;
-  touch-action: none; /* çoklu dokunma için önemli */
+  touch-action: none;
 }
 #menu {
   display: flex;
@@ -50,7 +50,7 @@ button:hover {
 .player-area {
   position: absolute;
   overflow: hidden;
-  border: 2px solid #16213e;
+  border: 2px solid #16213e;   /* ızgara çizgisi hissi verir */
   background: #0a0a1a;
 }
 .player-area canvas {
