@@ -2,32 +2,26 @@ export class SecretCanvas {
   constructor(canvas, playerIndex, totalPlayers) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.totalPlayers = totalPlayers; // 2-4
-    this.playerIndex = playerIndex;   // her zaman 0 (tek canvas)
+    this.totalPlayers = totalPlayers;
+    this.playerIndex = playerIndex;
 
-    // Oyun durumu
-    this.state = 'DRAWING'; // DRAWING, GUESSING, RESULT
+    this.state = 'DRAWING';
     this.drawerIndex = -1;
     this.currentGuesserIndex = 0;
-    this.guessers = [];       // çizer dışındaki oyuncu indeksleri
+    this.guessers = [];
     this.secretWord = '';
-    this.winner = null;       // kazanan: { type: 'drawer' veya 'guesser', index: ... }
+    this.winner = null;
 
-    // Çizim canvas'ı (offscreen)
     this.drawCanvas = document.createElement('canvas');
     this.drawCtx = this.drawCanvas.getContext('2d');
-    this.drawingColor = '#ff006e'; // varsayılan neon pembe
+    this.drawingColor = '#ff006e';
     this.drawingLineWidth = 6;
     this.isDrawing = false;
     this.lastPoint = null;
 
-    // Buton tanımlamaları (canvas üzerinde sanal butonlar)
-    this.buttons = []; // her state için yeniden tanımlanacak
-
-    // Partikül sistemi (sonuç ekranı için)
+    this.buttons = [];
     this.particles = [];
 
-    // Kelime havuzu (50 kelime)
     this.wordPool = [
       'Astronot', 'Helikopter', 'Denizaltı', 'Gitar', 'Kamp Ateşi',
       'Hamburger', 'Bukalemun', 'Hazine Sandığı', 'Dinozor', 'Uzay Gemisi',
@@ -55,22 +49,18 @@ export class SecretCanvas {
     this.drawCanvas.height = this.height;
   }
 
-  // Platform tarafından çağrılan start
   start() {
     this.resetGame();
     this.update();
   }
 
   resetGame() {
-    // Rastgele çizer seç
     this.drawerIndex = Math.floor(Math.random() * this.totalPlayers);
-    // Tahminciler listesi
     this.guessers = [];
     for (let i = 0; i < this.totalPlayers; i++) {
       if (i !== this.drawerIndex) this.guessers.push(i);
     }
     this.currentGuesserIndex = 0;
-    // Rastgele kelime
     this.secretWord = this.wordPool[Math.floor(Math.random() * this.wordPool.length)];
     this.winner = null;
     this.state = 'DRAWING';
@@ -81,16 +71,13 @@ export class SecretCanvas {
 
   clearDrawing() {
     this.drawCtx.clearRect(0, 0, this.width, this.height);
-    // Arka planı hafif saydam siyah yap (çizim için kontrast)
     this.drawCtx.fillStyle = 'rgba(20, 20, 40, 0.9)';
     this.drawCtx.fillRect(0, 0, this.width, this.height);
   }
 
-  // Her state için buton konumlarını ve metinlerini ayarla
   defineButtons() {
     this.buttons = [];
     if (this.state === 'DRAWING') {
-      // Renk paleti (üst çubuk)
       const colors = ['#ff006e', '#00f5d4', '#fee440', '#9b5de5', '#f15bb5', '#00bbf9'];
       const btnSize = Math.min(40, this.width / 12);
       const startX = 20;
@@ -107,7 +94,6 @@ export class SecretCanvas {
           value: colors[i]
         });
       }
-      // Fırça kalınlıkları
       const thicknesses = [3, 6, 10, 16];
       const thickY = y + btnSize + 15;
       for (let i = 0; i < thicknesses.length; i++) {
@@ -122,7 +108,6 @@ export class SecretCanvas {
           value: thicknesses[i]
         });
       }
-      // Temizle ve Bitti butonları
       this.buttons.push({
         id: 'clear',
         x: this.width - 140,
@@ -142,8 +127,6 @@ export class SecretCanvas {
         action: 'done'
       });
     } else if (this.state === 'GUESSING') {
-      const guesserIdx = this.guessers[this.currentGuesserIndex];
-      // "Çizimi Gör" butonu (basılı tut)
       this.buttons.push({
         id: 'showDrawing',
         x: this.width / 2 - 100,
@@ -154,7 +137,6 @@ export class SecretCanvas {
         action: 'showDrawing',
         hold: true
       });
-      // Doğru / Bilemedi butonları
       this.buttons.push({
         id: 'correct',
         x: this.width / 2 - 160,
@@ -186,12 +168,10 @@ export class SecretCanvas {
     }
   }
 
-  // Touch event handlers (platformdan gelen normalize 0-1 koordinatlar)
   onTouchStart(id, relX, relY) {
     const px = relX * this.width;
     const py = relY * this.height;
     if (this.state === 'DRAWING') {
-      // Buton kontrolü
       const btn = this.hitTest(px, py);
       if (btn) {
         if (btn.action === 'setColor') this.drawingColor = btn.value;
@@ -205,7 +185,6 @@ export class SecretCanvas {
         this.isDrawing = false;
         return;
       }
-      // Çizim başlangıcı
       this.isDrawing = true;
       this.lastPoint = { x: px, y: py };
       this.drawCtx.strokeStyle = this.drawingColor;
@@ -217,9 +196,8 @@ export class SecretCanvas {
     } else if (this.state === 'GUESSING') {
       const btn = this.hitTest(px, py);
       if (btn && btn.id === 'showDrawing') {
-        this.showDrawing = true; // basılı tutma başladı
+        this.showDrawing = true;
       } else if (btn && btn.action === 'correctGuess') {
-        // Doğru tahmin
         this.winner = { type: 'guesser', index: this.guessers[this.currentGuesserIndex] };
         this.state = 'RESULT';
         this.defineButtons();
@@ -248,7 +226,7 @@ export class SecretCanvas {
     if (this.state === 'DRAWING') {
       this.isDrawing = false;
     } else if (this.state === 'GUESSING') {
-      this.showDrawing = false; // parmak kalktı, çizimi gizle
+      this.showDrawing = false;
     }
   }
 
@@ -264,14 +242,12 @@ export class SecretCanvas {
   nextGuesser() {
     this.currentGuesserIndex++;
     if (this.currentGuesserIndex >= this.guessers.length) {
-      // Kimse bilemedi -> çizer kazandı
       this.winner = { type: 'drawer', index: this.drawerIndex };
       this.state = 'RESULT';
     }
     this.defineButtons();
   }
 
-  // Havai fişek partikülleri
   createFireworks() {
     for (let i = 0; i < 30; i++) {
       this.particles.push({
@@ -290,18 +266,14 @@ export class SecretCanvas {
     this.ctx.clearRect(0, 0, this.width, this.height);
 
     if (this.state === 'DRAWING') {
-      // Arka plan
       this.ctx.fillStyle = '#0a0a1a';
       this.ctx.fillRect(0, 0, this.width, this.height);
 
-      // Çizim canvas'ını ana canvas'a kopyala (saydamlıkla)
       this.ctx.globalAlpha = 0.85;
       this.ctx.drawImage(this.drawCanvas, 0, 0);
       this.ctx.globalAlpha = 1;
 
-      // Butonları çiz
       this.drawButtons();
-      // Çizer bilgisi ve kelime
       this.ctx.fillStyle = '#fff';
       this.ctx.font = 'bold 24px "Segoe UI"';
       this.ctx.textAlign = 'center';
@@ -319,11 +291,9 @@ export class SecretCanvas {
       this.ctx.textAlign = 'center';
       this.ctx.fillText(`Sıra: Oyuncu ${guesserIdx + 1}`, this.width / 2, 60);
 
-      // Eğer basılı tutuluyorsa çizimi göster
       if (this.showDrawing) {
         this.ctx.drawImage(this.drawCanvas, 0, 0);
       } else {
-        // Gizli mesaj
         this.ctx.fillStyle = '#aaa';
         this.ctx.font = '24px "Segoe UI"';
         this.ctx.fillText('"Çizimi Gör" butonuna basılı tut', this.width / 2, this.height / 2 - 100);
@@ -335,7 +305,6 @@ export class SecretCanvas {
       this.ctx.fillStyle = '#0a0a1a';
       this.ctx.fillRect(0, 0, this.width, this.height);
 
-      // Partikül efekti
       if (this.particles.length === 0) this.createFireworks();
       for (let i = this.particles.length - 1; i >= 0; i--) {
         const p = this.particles[i];
@@ -355,7 +324,6 @@ export class SecretCanvas {
       }
       this.ctx.globalAlpha = 1;
 
-      // Kazanan metni
       this.ctx.fillStyle = '#fff';
       this.ctx.font = 'bold 40px "Segoe UI"';
       this.ctx.textAlign = 'center';
@@ -376,20 +344,17 @@ export class SecretCanvas {
   drawButtons() {
     for (const btn of this.buttons) {
       if (btn.color) {
-        // Renk seçim butonu
         this.ctx.fillStyle = btn.color;
         this.ctx.fillRect(btn.x, btn.y, btn.w, btn.h);
         this.ctx.strokeStyle = '#fff';
         this.ctx.lineWidth = 2;
         this.ctx.strokeRect(btn.x, btn.y, btn.w, btn.h);
         if (this.drawingColor === btn.color && this.state === 'DRAWING') {
-          // Seçili olduğunu belirt
           this.ctx.strokeStyle = '#000';
           this.ctx.lineWidth = 3;
           this.ctx.strokeRect(btn.x, btn.y, btn.w, btn.h);
         }
       } else if (btn.thickness) {
-        // Kalınlık butonu
         this.ctx.fillStyle = '#333';
         this.ctx.fillRect(btn.x, btn.y, btn.w, btn.h);
         this.ctx.beginPath();
@@ -404,7 +369,6 @@ export class SecretCanvas {
           this.ctx.strokeRect(btn.x, btn.y, btn.w, btn.h);
         }
       } else if (btn.text) {
-        // Metinli buton
         this.ctx.fillStyle = '#0f3460';
         if (btn.id === 'done') this.ctx.fillStyle = '#e94560';
         if (btn.id === 'correct') this.ctx.fillStyle = '#2ecc71';
@@ -416,7 +380,6 @@ export class SecretCanvas {
         this.ctx.fillStyle = '#fff';
         this.ctx.font = 'bold 18px "Segoe UI"';
         this.ctx.textAlign = 'center';
-        // Çok satırlı metin için split
         const lines = btn.text.split('\n');
         const lineHeight = 22;
         const startY = btn.y + btn.h / 2 - ((lines.length - 1) * lineHeight) / 2;
