@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Çok Oyunculu Platform</title>
+  <title>Osmosis-Mini-Games</title>
   <link rel="stylesheet" href="style.css">
-  <!-- Three.js import map (modül olarak kullanılacak) -->
   <script type="importmap">
     {
       "imports": {
@@ -13,12 +12,11 @@
       }
     }
   </script>
-  <!-- Cannon.js (global) – opsiyonel, 3D fizik isteyen oyunlar için hazır -->
   <script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.cjs.js"></script>
 </head>
 <body>
   <div id="menu">
-    <h1>Oyun Platformu</h1>
+    <h1>🎮 Osmosis-Mini-Games</h1>
     <div id="player-select">
       <button class="player-btn" data-players="1">1 Oyuncu</button>
       <button class="player-btn" data-players="2">2 Oyuncu</button>
@@ -26,9 +24,8 @@
       <button class="player-btn" data-players="4">4 Oyuncu</button>
     </div>
     <div id="game-select" style="display:none;">
-      <button class="game-btn" data-game="mini-game-2d">🎨 Renk Yakalama (2D)</button>
-      <button class="game-btn" data-game="mini-game-3d">🧊 3D Küp Toplama</button>
-      <!-- Yeni oyun butonları buraya eklenebilir -->
+      <button class="game-btn" data-game="mini-game-2d">🎨 Renk Patlaması (2D)</button>
+      <button class="game-btn" data-game="mini-game-3d">🧊 3D Hazine Avı</button>
     </div>
   </div>
   <div id="game-container" style="display:none;"></div>
