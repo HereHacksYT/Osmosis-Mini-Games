@@ -75,19 +75,36 @@ function startGame(gameName, playerCount) {
   gameLoop();
 }
 
-// DİKEY (YATAY ŞERİT) BÖLME
+// 2×2 IZGARA VE 3 KİŞİ DESTEĞİ
 function getPlayerAreas(count) {
-  const areaHeight = 100 / count; // yüzde cinsinden
-  const areas = [];
-  for (let i = 0; i < count; i++) {
-    areas.push({
-      top: `${i * areaHeight}%`,
-      left: '0',
-      width: '100%',
-      height: `${areaHeight}%`
-    });
+  if (count === 1) {
+    return [{ top: '0', left: '0', width: '100%', height: '100%' }];
   }
-  return areas;
+  if (count === 2) {
+    // Alt alta iki şerit
+    return [
+      { top: '0', left: '0', width: '100%', height: '50%' },
+      { top: '50%', left: '0', width: '100%', height: '50%' }
+    ];
+  }
+  if (count === 3) {
+    // 2x2 ızgarada sol üst boş
+    return [
+      { top: '0', left: '50%', width: '50%', height: '50%' },   // Sağ üst
+      { top: '50%', left: '0', width: '50%', height: '50%' },   // Sol alt
+      { top: '50%', left: '50%', width: '50%', height: '50%' }  // Sağ alt
+    ];
+  }
+  if (count === 4) {
+    // 2x2 ızgara
+    return [
+      { top: '0', left: '0', width: '50%', height: '50%' },
+      { top: '0', left: '50%', width: '50%', height: '50%' },
+      { top: '50%', left: '0', width: '50%', height: '50%' },
+      { top: '50%', left: '50%', width: '50%', height: '50%' }
+    ];
+  }
+  return [];
 }
 
 // ---------- MULTI-TOUCH YÖNLENDİRME ----------
