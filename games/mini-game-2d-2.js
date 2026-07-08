@@ -9,11 +9,11 @@ export class SecretCanvas {
     this.drawerIndex = -1;
     this.currentGuesserIndex = 0;
     this.guessers = [];
+    this.guesserRemainingGuesses = {}; // Her tahmincinin kalan hakkı
     this.secretWord = '';
     this.winner = null;
-    this.roundGuessCount = 0;
-    this.totalGuessAttempts = 0;
-    this.maxGuessAttempts = 0;
+    this.totalAttemptsUsed = 0;
+    this.maxTotalAttempts = 0;
 
     this.drawCanvas = document.createElement('canvas');
     this.drawCtx = this.drawCanvas.getContext('2d');
@@ -52,7 +52,6 @@ export class SecretCanvas {
     this.drawCanvas.height = this.height;
   }
 
-  // Fisher-Yates shuffle
   shuffleArray(arr) {
     const a = [...arr];
     for (let i = a.length - 1; i > 0; i--) {
@@ -77,10 +76,15 @@ export class SecretCanvas {
     }
     this.guessers = this.shuffleArray(allGuessers);
     
+    // HER TAİHMİNCİYE 3 HAK VER
+    this.guesserRemainingGuesses = {};
+    for (const g of this.guessers) {
+      this.guesserRemainingGuesses[g] = 3;
+    }
+    
     this.currentGuesserIndex = 0;
-    this.roundGuessCount = 0;
-    this.totalGuessAttempts = 0;
-    this.maxGuessAttempts = this.guessers.length * 3;
+    this.totalAttemptsUsed = 0;
+    this.maxTotalAttempts = this.guessers.length * 3;
     
     this.secretWord = this.wordPool[Math.floor(Math.random() * this.wordPool.length)];
     this.winner = null;
@@ -221,6 +225,28 @@ export class SecretCanvas {
     }
   }
 
+  // Şu anki tahmincinin kalan hakkı
+  getCurrentGuesserRemaining() {
+    const guesser = this.guessers[this.currentGuesserIndex];
+    return this.guesserRemainingGuesses[guesser] || 0;
+  }
+
+  // Hakkı biten tahmincileri atlayarak sonraki geçerli tahminciyi bul
+  findNextValidGuesser() {
+    let checked = 0;
+    while (checked < this.guessers.length) {
+      this.currentGuesserIndex++;
+      if (this.currentGuesserIndex >= this.guessers.length) {
+        this.currentGuesserIndex = 0;
+      }
+      if (this.getCurrentGuesserRemaining() > 0) {
+        return true; // Geçerli tahminci bulundu
+      }
+      checked++;
+    }
+    return false; // Kimsede hak kalmadı
+  }
+
   onTouchStart(id, relX, relY) {
     const px = relX * this.width;
     const py = relY * this.height;
@@ -243,15 +269,16 @@ export class SecretCanvas {
         else if (btn.action === 'done') {
           this.state = 'GUESSING';
           this.currentGuesserIndex = 0;
-          this.roundGuessCount = 0;
-          this.totalGuessAttempts = 0;
+          // İlk tahmincinin hakkı varsa başla, yoksa sonrakine geç
+          if (this.getCurrentGuesserRemaining() === 0) {
+            this.findNextValidGuesser();
+          }
           this.defineButtons();
         }
         this.isDrawing = false;
         return;
       }
       
-      // Üst barın altından itibaren çizime izin ver
       if (py > 105 && py < this.height - 140) {
         this.isDrawing = true;
         this.lastPoint = { x: px, y: py };
@@ -270,7 +297,7 @@ export class SecretCanvas {
         this.state = 'RESULT';
         this.defineButtons();
       } else if (btn && btn.action === 'wrongGuess') {
-        this.nextGuesserOrAttempt();
+        this.useGuessAndNext();
       }
       
     } else if (this.state === 'RESULT') {
@@ -279,6 +306,33 @@ export class SecretCanvas {
         this.resetGame();
       }
     }
+  }
+
+  useGuessAndNext() {
+    // Şu anki tahmincinin hakkını azalt
+    const guesser = this.guessers[this.currentGuesserIndex];
+    this.guesserRemainingGuesses[guesser]--;
+    this.totalAttemptsUsed++;
+
+    // HAK BİTTİYSE SONRAKİNE GEÇ
+    if (this.getCurrentGuesserRemaining() <= 0) {
+      const found = this.findNextValidGuesser();
+      if (!found) {
+        // Kimsede hak kalmadı
+        this.winner = { type: 'drawer', index: this.drawerIndex };
+        this.state = 'RESULT';
+      }
+    } else {
+      // HAKKI VAR AMA YİNE DE SONRAKİ OYUNCUYA GEÇ (sıra onda)
+      // AYNI OYUNCU DEVAM ETMEZ, SONRAKİNE GEÇER
+      const found = this.findNextValidGuesser();
+      if (!found) {
+        this.winner = { type: 'drawer', index: this.drawerIndex };
+        this.state = 'RESULT';
+      }
+    }
+
+    this.defineButtons();
   }
 
   onTouchMove(id, relX, relY) {
@@ -320,23 +374,6 @@ export class SecretCanvas {
       }
     }
     return null;
-  }
-
-  nextGuesserOrAttempt() {
-    this.roundGuessCount++;
-    this.totalGuessAttempts++;
-    
-    if (this.roundGuessCount >= 3) {
-      this.roundGuessCount = 0;
-      this.currentGuesserIndex++;
-    }
-    
-    if (this.totalGuessAttempts >= this.maxGuessAttempts) {
-      this.winner = { type: 'drawer', index: this.drawerIndex };
-      this.state = 'RESULT';
-    }
-    
-    this.defineButtons();
   }
 
   createFireworks() {
@@ -473,23 +510,19 @@ export class SecretCanvas {
     } else if (this.state === 'DRAWING') {
       this.ctx.fillStyle = '#808080';
       this.ctx.fillRect(0, 0, this.width, this.height);
-      
-      // Çizimi göster
       this.ctx.drawImage(this.drawCanvas, 0, 0);
       
-      // ÜST BAR - DAHA BÜYÜK
+      // Üst bar
       this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
       this.ctx.fillRect(0, 0, this.width, 105);
       this.ctx.fillStyle = '#FFD700';
       this.ctx.fillRect(0, 105, this.width, 3);
       
-      // Çizen bilgisi
       this.ctx.fillStyle = '#FFFFFF';
       this.ctx.font = 'bold 20px "Segoe UI"';
       this.ctx.textAlign = 'left';
       this.ctx.fillText(`🎨 Oyuncu ${this.drawerIndex + 1} çiziyor`, 20, 40);
       
-      // KELİME - ORTADA BÜYÜK
       this.ctx.fillStyle = '#FFD700';
       this.ctx.font = 'bold 30px "Segoe UI"';
       this.ctx.textAlign = 'center';
@@ -497,16 +530,14 @@ export class SecretCanvas {
       
       this.drawAllButtons();
       
-    // ---------- GUESSING: Çizim hep gözüküyor ----------
+    // ---------- GUESSING ----------
     } else if (this.state === 'GUESSING') {
-      // ÇİZİMİ HEP GÖSTER
       this.ctx.drawImage(this.drawCanvas, 0, 0);
-      
-      // Hafif gölge overlay
       this.ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
       this.ctx.fillRect(0, 0, this.width, this.height);
       
       const guesserIdx = this.guessers[this.currentGuesserIndex];
+      const remaining = this.getCurrentGuesserRemaining();
       
       // Üst bar
       this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
@@ -519,15 +550,14 @@ export class SecretCanvas {
       this.ctx.textAlign = 'center';
       this.ctx.fillText(`🤔 Sıra: Oyuncu ${guesserIdx + 1}`, this.width / 2, 40);
       
-      // Kalan hak
-      const remainingGuesses = 3 - this.roundGuessCount;
+      // O OYUNCUNUN KALAN HAKKI
       let stars = '';
-      for (let s = 0; s < remainingGuesses; s++) stars += '⭐';
-      for (let s = remainingGuesses; s < 3; s++) stars += '☆';
+      for (let s = 0; s < remaining; s++) stars += '⭐';
+      for (let s = remaining; s < 3; s++) stars += '☆';
       
       this.ctx.fillStyle = '#FFD700';
       this.ctx.font = 'bold 20px "Segoe UI"';
-      this.ctx.fillText(`Kalan: ${stars}`, this.width / 2, 70);
+      this.ctx.fillText(`Bu oyuncunun kalan hakkı: ${stars}`, this.width / 2, 70);
       
       // Alt bilgi
       this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
