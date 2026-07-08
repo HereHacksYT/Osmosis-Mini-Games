@@ -8,9 +8,9 @@ const gameContainer = document.getElementById('game-container');
 
 let selectedPlayers = 0;
 let selectedGame = '';
-const gameInstances = []; // { instance, element, canvas, index }
+const gameInstances = [];
 
-// ---------- MENÜ ADIMLARI ----------
+// ---------- MENÜ ----------
 playerSelectDiv.addEventListener('click', (e) => {
   if (!e.target.classList.contains('player-btn')) return;
   selectedPlayers = parseInt(e.target.dataset.players, 10);
@@ -31,7 +31,6 @@ function startGame(gameName, playerCount) {
   gameContainer.innerHTML = '';
   gameInstances.length = 0;
 
-  // Oyuncu sayısına göre alanları belirle (CSS yüzde veya piksel)
   const areas = getPlayerAreas(playerCount);
 
   for (let i = 0; i < playerCount; i++) {
@@ -49,7 +48,6 @@ function startGame(gameName, playerCount) {
     playerDiv.appendChild(canvas);
     gameContainer.appendChild(playerDiv);
 
-    // İlgili oyun sınıfını örnekle
     let instance;
     if (gameName === 'mini-game-2d') {
       instance = new MiniGame2D(canvas, i);
@@ -60,20 +58,14 @@ function startGame(gameName, playerCount) {
       return;
     }
 
-    gameInstances.push({
-      instance,
-      element: playerDiv,
-      canvas,
-      index: i
-    });
+    gameInstances.push({ instance, element: playerDiv, canvas, index: i });
   }
 
   setupTouchListeners();
 
-  // Bütün oyunları başlat
+  // Tüm oyunları başlat
   gameInstances.forEach(g => g.instance.start());
 
-  // Tek bir requestAnimationFrame zinciri
   function gameLoop() {
     gameInstances.forEach(g => {
       if (g.instance.update) g.instance.update();
@@ -83,34 +75,19 @@ function startGame(gameName, playerCount) {
   gameLoop();
 }
 
-// Oyuncu alanlarının CSS değerlerini üretir
+// DİKEY (YATAY ŞERİT) BÖLME
 function getPlayerAreas(count) {
-  if (count === 1) {
-    return [{ top: '0', left: '0', width: '100%', height: '100%' }];
+  const areaHeight = 100 / count; // yüzde cinsinden
+  const areas = [];
+  for (let i = 0; i < count; i++) {
+    areas.push({
+      top: `${i * areaHeight}%`,
+      left: '0',
+      width: '100%',
+      height: `${areaHeight}%`
+    });
   }
-  if (count === 2) {
-    return [
-      { top: '0', left: '0', width: '50%', height: '100%' },
-      { top: '0', left: '50%', width: '50%', height: '100%' }
-    ];
-  }
-  if (count === 3) {
-    // Üç eşit dikey sütun
-    return [
-      { top: '0', left: '0', width: '33.333%', height: '100%' },
-      { top: '0', left: '33.333%', width: '33.333%', height: '100%' },
-      { top: '0', left: '66.666%', width: '33.333%', height: '100%' }
-    ];
-  }
-  if (count === 4) {
-    return [
-      { top: '0', left: '0', width: '50%', height: '50%' },
-      { top: '0', left: '50%', width: '50%', height: '50%' },
-      { top: '50%', left: '0', width: '50%', height: '50%' },
-      { top: '50%', left: '50%', width: '50%', height: '50%' }
-    ];
-  }
-  return [];
+  return areas;
 }
 
 // ---------- MULTI-TOUCH YÖNLENDİRME ----------
@@ -130,7 +107,6 @@ function handleTouch(e, type) {
 
     const { instance, canvas } = gameInstances[targetIdx];
     const rect = canvas.getBoundingClientRect();
-    // 0-1 aralığında normalize koordinatlar
     const relX = (touch.clientX - rect.left) / rect.width;
     const relY = (touch.clientY - rect.top) / rect.height;
 
