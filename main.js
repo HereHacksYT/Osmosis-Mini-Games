@@ -1,5 +1,6 @@
 import { MiniGame2D } from './games/mini-game-2d.js';
 import { MiniGame3D } from './games/mini-game-3d.js';
+import { SecretCanvas } from './games/mini-game-2d-2.js';
 
 const menuDiv = document.getElementById('menu');
 const playerSelectDiv = document.getElementById('player-select');
@@ -31,34 +32,54 @@ function startGame(gameName, playerCount) {
   gameContainer.innerHTML = '';
   gameInstances.length = 0;
 
-  const areas = getPlayerAreas(playerCount);
-
-  for (let i = 0; i < playerCount; i++) {
-    const area = areas[i];
+  // Secret Canvas için özel: tek tam ekran alan, oyuncu sayısını oyuna aktar
+  if (gameName === 'mini-game-2d-2') {
     const playerDiv = document.createElement('div');
     playerDiv.className = 'player-area';
-    playerDiv.style.top = area.top;
-    playerDiv.style.left = area.left;
-    playerDiv.style.width = area.width;
-    playerDiv.style.height = area.height;
-    playerDiv.dataset.playerIndex = i;
+    playerDiv.style.top = '0';
+    playerDiv.style.left = '0';
+    playerDiv.style.width = '100%';
+    playerDiv.style.height = '100%';
+    playerDiv.dataset.playerIndex = 0;
 
     const canvas = document.createElement('canvas');
-    canvas.id = `player-${i}-canvas`;
+    canvas.id = 'player-0-canvas';
     playerDiv.appendChild(canvas);
     gameContainer.appendChild(playerDiv);
 
-    let instance;
-    if (gameName === 'mini-game-2d') {
-      instance = new MiniGame2D(canvas, i);
-    } else if (gameName === 'mini-game-3d') {
-      instance = new MiniGame3D(canvas, i);
-    } else {
-      console.error('Bilinmeyen oyun:', gameName);
-      return;
-    }
+    const instance = new SecretCanvas(canvas, 0, playerCount);
+    gameInstances.push({ instance, element: playerDiv, canvas, index: 0 });
+  } else {
+    // Normal çoklu alan bölme (2D ve 3D oyunlar için)
+    const areas = getPlayerAreas(playerCount);
 
-    gameInstances.push({ instance, element: playerDiv, canvas, index: i });
+    for (let i = 0; i < playerCount; i++) {
+      const area = areas[i];
+      const playerDiv = document.createElement('div');
+      playerDiv.className = 'player-area';
+      playerDiv.style.top = area.top;
+      playerDiv.style.left = area.left;
+      playerDiv.style.width = area.width;
+      playerDiv.style.height = area.height;
+      playerDiv.dataset.playerIndex = i;
+
+      const canvas = document.createElement('canvas');
+      canvas.id = `player-${i}-canvas`;
+      playerDiv.appendChild(canvas);
+      gameContainer.appendChild(playerDiv);
+
+      let instance;
+      if (gameName === 'mini-game-2d') {
+        instance = new MiniGame2D(canvas, i);
+      } else if (gameName === 'mini-game-3d') {
+        instance = new MiniGame3D(canvas, i);
+      } else {
+        console.error('Bilinmeyen oyun:', gameName);
+        return;
+      }
+
+      gameInstances.push({ instance, element: playerDiv, canvas, index: i });
+    }
   }
 
   setupTouchListeners();
@@ -81,22 +102,19 @@ function getPlayerAreas(count) {
     return [{ top: '0', left: '0', width: '100%', height: '100%' }];
   }
   if (count === 2) {
-    // Alt alta iki şerit
     return [
       { top: '0', left: '0', width: '100%', height: '50%' },
       { top: '50%', left: '0', width: '100%', height: '50%' }
     ];
   }
   if (count === 3) {
-    // 2x2 ızgarada sol üst boş
     return [
-      { top: '0', left: '50%', width: '50%', height: '50%' },   // Sağ üst
-      { top: '50%', left: '0', width: '50%', height: '50%' },   // Sol alt
-      { top: '50%', left: '50%', width: '50%', height: '50%' }  // Sağ alt
+      { top: '0', left: '50%', width: '50%', height: '50%' },
+      { top: '50%', left: '0', width: '50%', height: '50%' },
+      { top: '50%', left: '50%', width: '50%', height: '50%' }
     ];
   }
   if (count === 4) {
-    // 2x2 ızgara
     return [
       { top: '0', left: '0', width: '50%', height: '50%' },
       { top: '0', left: '50%', width: '50%', height: '50%' },
