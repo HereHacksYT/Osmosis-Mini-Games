@@ -18,6 +18,7 @@ export class SecretCanvas {
     this.drawCanvas = document.createElement('canvas');
     this.drawCtx = this.drawCanvas.getContext('2d');
     this.drawingColor = '#FF0000';
+    this.tempColor = '#FF0000'; // Çarkta seçilen geçici renk
     this.drawingLineWidth = 8;
     this.isDrawing = false;
     this.lastPoint = null;
@@ -25,7 +26,7 @@ export class SecretCanvas {
     this.buttons = [];
     this.particles = [];
     this.colorPanelOpen = false;
-    this.colorGrid = [];
+    this.colorWheel = null; // Çark canvas'ı
 
     this.wordPool = [
       'Kıskançlık', 'Özgürlük', 'Kabus', 'Pişmanlık', 'Mucize',
@@ -38,20 +39,6 @@ export class SecretCanvas {
       'Hortum', 'Tufan', 'Kutup', 'Çığ', 'Heyelan',
       'Gökkuşağı', 'Kuzey Işıkları', 'Serap', 'Meteor', 'Tutulma',
       'Lav', 'Buzul', 'Safari', 'Çığlık', 'Fısıltı'
-    ];
-
-    // Renk paleti - tüm tonlar
-    this.colorPalette = [
-      '#FF0000', '#FF1A1A', '#FF3333', '#FF4D4D', '#FF6666', '#FF8080', '#FF9999', '#CC0000', '#990000',
-      '#FF4400', '#FF5500', '#FF6600', '#FF7700', '#FF8800', '#FF9900', '#FFAA00', '#FFBB00', '#CC5500',
-      '#FFD700', '#FFDD00', '#FFEE00', '#FFFF00', '#FFE600', '#FFCC00', '#FFB800', '#CCA800', '#997F00',
-      '#CCFF00', '#99FF00', '#66FF00', '#33FF00', '#00FF00', '#00E600', '#00CC00', '#009900', '#006600',
-      '#00FF33', '#00FF66', '#00FF99', '#00FFCC', '#00FFFF', '#00E6E6', '#00CCCC', '#009999', '#006666',
-      '#00CCFF', '#0099FF', '#0066FF', '#0033FF', '#0000FF', '#0000E6', '#0000CC', '#000099', '#000066',
-      '#3300FF', '#6600FF', '#9900FF', '#CC00FF', '#FF00FF', '#E600E6', '#CC00CC', '#990099', '#660066',
-      '#FF00CC', '#FF0099', '#FF0066', '#FF0033', '#FF0080', '#E60060', '#CC0040', '#990030', '#660020',
-      '#FFFFFF', '#E6E6E6', '#CCCCCC', '#B3B3B3', '#999999', '#808080', '#666666', '#4D4D4D', '#333333',
-      '#000000', '#8B4513', '#A0522D', '#CD853F', '#DEB887', '#F5DEB3', '#D2691E', '#FF6347', '#FF69B4'
     ];
 
     this.resize();
@@ -104,6 +91,8 @@ export class SecretCanvas {
     this.winner = null;
     this.state = 'DRAWER_WARNING';
     this.colorPanelOpen = false;
+    this.drawingColor = '#FF0000';
+    this.tempColor = '#FF0000';
     this.clearDrawing();
     this.particles = [];
     this.defineButtons();
@@ -115,29 +104,66 @@ export class SecretCanvas {
     this.drawCtx.fillRect(0, 0, this.width, this.height);
   }
 
-  // Renk paneli grid hesaplama
-  buildColorGrid() {
-    this.colorGrid = [];
-    const cols = 9;
-    const panelX = 20;
-    const panelY = 120;
-    const panelW = this.width - 40;
-    const panelH = this.height - 280;
-    const cellW = panelW / cols;
-    const cellH = cellW;
-    const rows = Math.floor(panelH / cellH);
-    
-    for (let i = 0; i < Math.min(this.colorPalette.length, rows * cols); i++) {
-      const row = Math.floor(i / cols);
-      const col = i % cols;
-      this.colorGrid.push({
-        x: panelX + col * cellW + 2,
-        y: panelY + row * cellH + 2,
-        w: cellW - 4,
-        h: cellH - 4,
-        color: this.colorPalette[i]
-      });
+  // Renk çarkı oluştur
+  createColorWheel(cx, cy, radius) {
+    const offCanvas = document.createElement('canvas');
+    const size = radius * 2;
+    offCanvas.width = size;
+    offCanvas.height = size;
+    const ctx = offCanvas.getContext('2d');
+
+    // HSV renk çarkı
+    for (let angle = 0; angle < 360; angle++) {
+      const startAngle = (angle - 1) * Math.PI / 180;
+      const endAngle = (angle + 1) * Math.PI / 180;
+      
+      ctx.beginPath();
+      ctx.moveTo(radius, radius);
+      ctx.arc(radius, radius, radius, startAngle, endAngle);
+      ctx.closePath();
+      
+      const gradient = ctx.createRadialGradient(radius, radius, 0, radius, radius, radius);
+      gradient.addColorStop(0, '#FFFFFF');
+      gradient.addColorStop(0.5, `hsl(${angle}, 100%, 50%)`);
+      gradient.addColorStop(1, '#000000');
+      
+      ctx.fillStyle = gradient;
+      ctx.fill();
     }
+
+    // Ortada beyaz daire (seçilen rengi göstermek için)
+    ctx.beginPath();
+    ctx.arc(radius, radius, radius * 0.25, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fill();
+    ctx.strokeStyle = '#999';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    this.colorWheel = {
+      canvas: offCanvas,
+      cx: cx,
+      cy: cy,
+      radius: radius,
+      centerX: cx + radius,
+      centerY: cy + radius
+    };
+  }
+
+  // Renk çarkından renk al
+  getColorFromWheel(x, y) {
+    if (!this.colorWheel) return '#FF0000';
+    
+    const dx = x - this.colorWheel.centerX;
+    const dy = y - this.colorWheel.centerY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    
+    if (dist > this.colorWheel.radius) return null; // Çark dışı
+    
+    const angle = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
+    const saturation = Math.min(dist / this.colorWheel.radius, 1) * 100;
+    
+    return `hsl(${angle}, ${saturation}%, ${50}%)`;
   }
 
   defineButtons() {
@@ -160,55 +186,68 @@ export class SecretCanvas {
       
     } else if (this.state === 'DRAWING') {
       if (this.colorPanelOpen) {
-        // Panel açıkken sadece kapatma butonu var (üstte)
-        // Renk seçimi colorGrid üzerinden yapılır
-        this.buildColorGrid();
+        // Panel açık: Seç ve İptal butonları
+        const panelCenterX = this.width / 2;
+        const panelBottom = this.height - 80;
+        
+        this.buttons.push({
+          type: 'oval',
+          id: 'selectColor',
+          x: panelCenterX - 170,
+          y: panelBottom,
+          w: 150,
+          h: 55,
+          radius: 27,
+          color: '#00CC00',
+          text: '✅ Seç',
+          textSize: 22,
+          action: 'selectColor'
+        });
+        
+        this.buttons.push({
+          type: 'oval',
+          id: 'cancelColor',
+          x: panelCenterX + 20,
+          y: panelBottom,
+          w: 150,
+          h: 55,
+          radius: 27,
+          color: '#FF3333',
+          text: '❌ İptal',
+          textSize: 20,
+          action: 'cancelColor'
+        });
+        
       } else {
-        // Normal çizim butonları
+        // Normal çizim modu butonları
         
-        // Hızlı renkler (6 renk)
-        const quickColors = ['#FF0000', '#0000FF', '#FFD700', '#FF00FF', '#00FF00', '#FF6600'];
-        const btnRadius = 22;
-        const startX = 40;
-        const y = 130;
-        
-        for (let i = 0; i < quickColors.length; i++) {
-          this.buttons.push({
-            type: 'circle',
-            id: 'quickColor_' + i,
-            cx: startX + i * (btnRadius * 2 + 15),
-            cy: y,
-            radius: btnRadius,
-            color: quickColors[i],
-            action: 'setColor',
-            value: quickColors[i]
-          });
-        }
-        
-        // RENK SEÇ BUTONU
+        // Renk Seç butonu (aktif rengi gösterir)
         this.buttons.push({
           type: 'oval',
           id: 'colorPanelBtn',
-          x: startX + 6 * (btnRadius * 2 + 15) + 10,
-          y: y - 12,
-          w: 140,
-          h: 50,
-          radius: 25,
-          color: '#8B00FF',
-          text: '🎨 Renk Seç',
-          textSize: 16,
+          x: 20,
+          y: 125,
+          w: 150,
+          h: 55,
+          radius: 27,
+          color: this.drawingColor,
+          text: '🎨 Renk',
+          textSize: 20,
           action: 'openColorPanel'
         });
         
         // Fırça kalınlıkları
         const thicknesses = [3, 6, 10, 16];
-        const thickY = y + btnRadius * 2 + 20;
+        const thickStartX = 185;
+        const thickY = 125;
+        const btnRadius = 22;
+        
         for (let i = 0; i < thicknesses.length; i++) {
           this.buttons.push({
             type: 'circle',
             id: 'thick_' + i,
-            cx: startX + i * (btnRadius * 2 + 15),
-            cy: thickY,
+            cx: thickStartX + i * (btnRadius * 2 + 15),
+            cy: thickY + 27,
             radius: btnRadius,
             thickness: thicknesses[i],
             action: 'setThickness',
@@ -221,10 +260,10 @@ export class SecretCanvas {
           type: 'oval',
           id: 'clear',
           x: this.width - 160,
-          y: 130,
+          y: 125,
           w: 140,
-          h: 50,
-          radius: 25,
+          h: 55,
+          radius: 27,
           color: '#FF3333',
           text: '🧹 Temizle',
           action: 'clear'
@@ -326,32 +365,26 @@ export class SecretCanvas {
     }
     
     if (this.state === 'DRAWING') {
-      // Panel açıksa renk seçimi kontrolü
       if (this.colorPanelOpen) {
-        // Panel dışı tıklama = kapat
-        const panelBounds = {
-          x: 20,
-          y: 120,
-          w: this.width - 40,
-          h: this.height - 280
-        };
-        
-        if (px < panelBounds.x || px > panelBounds.x + panelBounds.w ||
-            py < panelBounds.y || py > panelBounds.y + panelBounds.h) {
-          this.colorPanelOpen = false;
-          this.defineButtons();
-          return;
-        }
-        
-        // Renk grid hücresi kontrolü
-        for (const cell of this.colorGrid) {
-          if (px >= cell.x && px <= cell.x + cell.w &&
-              py >= cell.y && py <= cell.y + cell.h) {
-            this.drawingColor = cell.color;
+        // Panel butonları kontrolü
+        const btn = this.hitTest(px, py);
+        if (btn) {
+          if (btn.action === 'selectColor') {
+            this.drawingColor = this.tempColor;
+            this.colorPanelOpen = false;
+            this.defineButtons();
+            return;
+          } else if (btn.action === 'cancelColor') {
             this.colorPanelOpen = false;
             this.defineButtons();
             return;
           }
+        }
+        
+        // Çark üzerinde renk seçimi
+        const color = this.getColorFromWheel(px, py);
+        if (color) {
+          this.tempColor = color;
         }
         return;
       }
@@ -359,11 +392,11 @@ export class SecretCanvas {
       // Normal buton kontrolü
       const btn = this.hitTest(px, py);
       if (btn) {
-        if (btn.action === 'setColor') this.drawingColor = btn.value;
-        else if (btn.action === 'setThickness') this.drawingLineWidth = btn.value;
+        if (btn.action === 'setThickness') this.drawingLineWidth = btn.value;
         else if (btn.action === 'clear') this.clearDrawing();
         else if (btn.action === 'openColorPanel') {
           this.colorPanelOpen = true;
+          this.tempColor = this.drawingColor;
           this.defineButtons();
         }
         else if (btn.action === 'done') {
@@ -378,7 +411,7 @@ export class SecretCanvas {
         return;
       }
       
-      // Çizim (panel kapalıysa ve üst/alt bar dışında)
+      // Çizim
       if (!this.colorPanelOpen && py > 105 && py < this.height - 140) {
         this.isDrawing = true;
         this.lastPoint = { x: px, y: py };
@@ -433,11 +466,20 @@ export class SecretCanvas {
   onTouchMove(id, relX, relY) {
     const px = relX * this.width;
     const py = relY * this.height;
-    if (this.state === 'DRAWING' && this.isDrawing && !this.colorPanelOpen) {
-      if (py > 105 && py < this.height - 140) {
-        this.drawCtx.lineTo(px, py);
-        this.drawCtx.stroke();
-        this.lastPoint = { x: px, y: py };
+    
+    if (this.state === 'DRAWING') {
+      if (this.colorPanelOpen) {
+        // Çark üzerinde sürükleme
+        const color = this.getColorFromWheel(px, py);
+        if (color) {
+          this.tempColor = color;
+        }
+      } else if (this.isDrawing) {
+        if (py > 105 && py < this.height - 140) {
+          this.drawCtx.lineTo(px, py);
+          this.drawCtx.stroke();
+          this.lastPoint = { x: px, y: py };
+        }
       }
     }
   }
@@ -486,28 +528,7 @@ export class SecretCanvas {
   }
 
   drawCircleButton(btn) {
-    if (btn.color) {
-      this.ctx.beginPath();
-      this.ctx.arc(btn.cx, btn.cy + 2, btn.radius, 0, Math.PI * 2);
-      this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      this.ctx.fill();
-      
-      this.ctx.beginPath();
-      this.ctx.arc(btn.cx, btn.cy, btn.radius, 0, Math.PI * 2);
-      this.ctx.fillStyle = btn.color;
-      this.ctx.fill();
-      this.ctx.strokeStyle = '#fff';
-      this.ctx.lineWidth = 3;
-      this.ctx.stroke();
-      
-      if (this.drawingColor === btn.color && this.state === 'DRAWING') {
-        this.ctx.beginPath();
-        this.ctx.arc(btn.cx, btn.cy, btn.radius + 5, 0, Math.PI * 2);
-        this.ctx.strokeStyle = '#000';
-        this.ctx.lineWidth = 3;
-        this.ctx.stroke();
-      }
-    } else if (btn.thickness) {
+    if (btn.thickness) {
       this.ctx.beginPath();
       this.ctx.arc(btn.cx, btn.cy + 2, btn.radius, 0, Math.PI * 2);
       this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -550,7 +571,13 @@ export class SecretCanvas {
     
     this.ctx.beginPath();
     this.ctx.ellipse(cx, cy, btn.w / 2, btn.h / 2, 0, 0, Math.PI * 2);
-    this.ctx.fillStyle = btn.color || '#666666';
+    
+    // Renk butonu için özel: aktif rengi göster
+    if (btn.id === 'colorPanelBtn') {
+      this.ctx.fillStyle = btn.color;
+    } else {
+      this.ctx.fillStyle = btn.color || '#666666';
+    }
     this.ctx.fill();
     this.ctx.strokeStyle = '#fff';
     this.ctx.lineWidth = 3;
@@ -563,7 +590,7 @@ export class SecretCanvas {
     this.ctx.fill();
     
     if (btn.text) {
-      this.ctx.fillStyle = '#FFFFFF';
+      this.ctx.fillStyle = btn.id === 'colorPanelBtn' ? '#000' : '#FFFFFF';
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
       const fontSize = btn.textSize || 18;
@@ -577,39 +604,61 @@ export class SecretCanvas {
     }
   }
 
-  // Renk panelini çiz
-  drawColorPanel() {
+  // Renk çarkı panelini çiz
+  drawColorWheelPanel() {
+    const wheelSize = Math.min(this.width - 80, this.height - 300);
+    const wheelRadius = wheelSize / 2;
+    const wheelX = (this.width - wheelSize) / 2;
+    const wheelY = 130;
+    
+    // Çarkı oluştur (ilk açılışta)
+    if (!this.colorWheel || this.colorWheel.radius !== wheelRadius) {
+      this.createColorWheel(wheelX, wheelY, wheelRadius);
+    }
+    
     // Yarı saydam arka plan
     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
     this.ctx.fillRect(0, 0, this.width, this.height);
     
-    // Panel alanı
-    const panelX = 20;
-    const panelY = 120;
-    const panelW = this.width - 40;
-    const panelH = this.height - 280;
-    
-    // Panel arka planı
-    this.ctx.fillStyle = '#2a2a2e';
-    this.ctx.fillRect(panelX - 5, panelY - 5, panelW + 10, panelH + 10);
-    this.ctx.strokeStyle = '#FFD700';
-    this.ctx.lineWidth = 3;
-    this.ctx.strokeRect(panelX - 5, panelY - 5, panelW + 10, panelH + 10);
+    // Çark canvas'ını çiz
+    if (this.colorWheel) {
+      this.ctx.drawImage(this.colorWheel.canvas, wheelX, wheelY);
+      
+      // Seçilen rengi ortada göster
+      const centerX = this.colorWheel.centerX;
+      const centerY = this.colorWheel.centerY;
+      
+      this.ctx.beginPath();
+      this.ctx.arc(centerX, centerY, wheelRadius * 0.23, 0, Math.PI * 2);
+      this.ctx.fillStyle = this.tempColor;
+      this.ctx.fill();
+      this.ctx.strokeStyle = '#fff';
+      this.ctx.lineWidth = 3;
+      this.ctx.stroke();
+    }
     
     // Başlık
     this.ctx.fillStyle = '#FFFFFF';
-    this.ctx.font = 'bold 22px "Segoe UI"';
+    this.ctx.font = 'bold 24px "Segoe UI"';
     this.ctx.textAlign = 'center';
-    this.ctx.fillText('🎨 Renk Seç (Tıklayınca kapanır)', this.width / 2, panelY - 15);
+    this.ctx.fillText('🎨 Parmağını kaydır, rengi seç', this.width / 2, wheelY - 15);
     
-    // Grid hücrelerini çiz
-    for (const cell of this.colorGrid) {
-      this.ctx.fillStyle = cell.color;
-      this.ctx.fillRect(cell.x, cell.y, cell.w, cell.h);
-      this.ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-      this.ctx.lineWidth = 1;
-      this.ctx.strokeRect(cell.x, cell.y, cell.w, cell.h);
-    }
+    // Seçili renk önizleme
+    const previewY = wheelY + wheelSize + 25;
+    this.ctx.fillStyle = '#FFFFFF';
+    this.ctx.font = '20px "Segoe UI"';
+    this.ctx.fillText('Seçilen:', this.width / 2 - 60, previewY);
+    
+    this.ctx.beginPath();
+    this.ctx.arc(this.width / 2 + 30, previewY - 8, 18, 0, Math.PI * 2);
+    this.ctx.fillStyle = this.tempColor;
+    this.ctx.fill();
+    this.ctx.strokeStyle = '#fff';
+    this.ctx.lineWidth = 2;
+    this.ctx.stroke();
+    
+    // Butonları çiz
+    this.drawAllButtons();
   }
 
   update() {
@@ -640,39 +689,32 @@ export class SecretCanvas {
     } else if (this.state === 'DRAWING') {
       this.ctx.fillStyle = '#808080';
       this.ctx.fillRect(0, 0, this.width, this.height);
-      this.ctx.drawImage(this.drawCanvas, 0, 0);
       
-      // Üst bar
-      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-      this.ctx.fillRect(0, 0, this.width, 105);
-      this.ctx.fillStyle = '#FFD700';
-      this.ctx.fillRect(0, 105, this.width, 3);
-      
-      this.ctx.fillStyle = '#FFFFFF';
-      this.ctx.font = 'bold 20px "Segoe UI"';
-      this.ctx.textAlign = 'left';
-      this.ctx.fillText(`🎨 Oyuncu ${this.drawerIndex + 1} çiziyor`, 20, 40);
-      
-      this.ctx.fillStyle = '#FFD700';
-      this.ctx.font = 'bold 30px "Segoe UI"';
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText(`"${this.secretWord}"`, this.width / 2, 75);
-      
-      // Aktif renk göstergesi (kelimenin yanında)
-      this.ctx.beginPath();
-      this.ctx.arc(this.width / 2 - 150, 62, 12, 0, Math.PI * 2);
-      this.ctx.fillStyle = this.drawingColor;
-      this.ctx.fill();
-      this.ctx.strokeStyle = '#fff';
-      this.ctx.lineWidth = 2;
-      this.ctx.stroke();
-      
-      this.drawAllButtons();
-      
-      // Panel açıksa en üstte çiz
-      if (this.colorPanelOpen) {
-        this.drawColorPanel();
-        // Sadece Bitti butonunu göster
+      if (!this.colorPanelOpen) {
+        this.ctx.drawImage(this.drawCanvas, 0, 0);
+        
+        // Üst bar
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        this.ctx.fillRect(0, 0, this.width, 105);
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.fillRect(0, 105, this.width, 3);
+        
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = 'bold 20px "Segoe UI"';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText(`🎨 Oyuncu ${this.drawerIndex + 1} çiziyor`, 20, 40);
+        
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.font = 'bold 30px "Segoe UI"';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(`"${this.secretWord}"`, this.width / 2, 75);
+        
+        this.drawAllButtons();
+      } else {
+        // Panel açık
+        this.drawColorWheelPanel();
+        
+        // Bitti butonunu göster
         for (const btn of this.buttons) {
           if (btn.id === 'done') this.drawOvalButton(btn);
         }
@@ -768,7 +810,6 @@ export class SecretCanvas {
   }
 
   drawAllButtons() {
-    if (this.colorPanelOpen) return; // Panel açıkken butonları çizme
     for (const btn of this.buttons) {
       if (btn.type === 'circle') {
         this.drawCircleButton(btn);
