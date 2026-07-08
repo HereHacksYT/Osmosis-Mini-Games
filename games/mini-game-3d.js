@@ -34,13 +34,11 @@ export class MiniGame3D {
   }
 
   initScene() {
-    // Işıklandırma
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.4));
     const dir = new THREE.DirectionalLight(0xffffff, 0.8);
     dir.position.set(5, 12, 5);
     this.scene.add(dir);
 
-    // Zemin
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(14, 14),
       new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 })
@@ -49,14 +47,12 @@ export class MiniGame3D {
     ground.position.y = -0.5;
     this.scene.add(ground);
 
-    // Oyuncu topu
     const ballGeo = new THREE.SphereGeometry(0.5, 32, 32);
     const ballMat = new THREE.MeshStandardMaterial({ color: 0xff6600, roughness: 0.2, emissive: 0x220000 });
     this.playerBall = new THREE.Mesh(ballGeo, ballMat);
     this.playerBall.position.set(0, 0.5, 0);
     this.scene.add(this.playerBall);
 
-    // Hedef küpler (dönecek)
     for (let i = 0; i < 10; i++) this.spawnTarget();
   }
 
@@ -134,12 +130,10 @@ export class MiniGame3D {
   }
 
   update() {
-    // Top hareketi
     if (this.playerBall) {
       this.playerBall.position.lerp(this.targetPos, 0.1);
     }
 
-    // Küpleri döndür ve çarpışma kontrolü
     for (let i = this.targets.length - 1; i >= 0; i--) {
       const cube = this.targets[i];
       cube.rotation.x += cube.userData.rotSpeed.x;
@@ -155,7 +149,6 @@ export class MiniGame3D {
       }
     }
 
-    // Partikülleri güncelle
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       p.userData.life -= 0.02;
