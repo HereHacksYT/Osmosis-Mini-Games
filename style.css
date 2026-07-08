@@ -50,7 +50,7 @@ button:hover {
 .player-area {
   position: absolute;
   overflow: hidden;
-  border: 2px solid #16213e;   /* ızgara çizgisi hissi verir */
+  border: 2px solid #16213e;
   background: #0a0a1a;
 }
 .player-area canvas {
