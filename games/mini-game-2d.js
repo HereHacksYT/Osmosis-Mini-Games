@@ -74,24 +74,20 @@ export class MiniGame2D {
   update() {
     this.ctx.clearRect(0, 0, this.width, this.height);
 
-    // Arka plan degrade
     const grad = this.ctx.createLinearGradient(0, 0, 0, this.height);
     grad.addColorStop(0, `hsl(${this.playerIndex * 80}, 50%, 10%)`);
     grad.addColorStop(1, `hsl(${this.playerIndex * 80}, 50%, 5%)`);
     this.ctx.fillStyle = grad;
     this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Hedefleri hareket ettir ve çiz
     for (let i = this.targets.length - 1; i >= 0; i--) {
       const t = this.targets[i];
       t.x += t.vx;
       t.y += t.vy;
 
-      // Duvarlardan sektir
       if (t.x - t.radius < 0 || t.x + t.radius > this.width) t.vx *= -1;
       if (t.y - t.radius < 0 || t.y + t.radius > this.height) t.vy *= -1;
 
-      // Dokunma ile toplama
       if (this.touchActive && this.touchX !== null) {
         const dx = this.touchX - t.x;
         const dy = this.touchY - t.y;
@@ -113,7 +109,6 @@ export class MiniGame2D {
       this.ctx.stroke();
     }
 
-    // Partikülleri güncelle
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       p.x += p.vx;
@@ -131,7 +126,6 @@ export class MiniGame2D {
     }
     this.ctx.globalAlpha = 1;
 
-    // Dokunma işaretçisi
     if (this.touchActive && this.touchX !== null) {
       this.ctx.beginPath();
       this.ctx.arc(this.touchX, this.touchY, 16, 0, Math.PI * 2);
@@ -142,7 +136,6 @@ export class MiniGame2D {
       this.ctx.stroke();
     }
 
-    // Skor
     this.ctx.fillStyle = '#fff';
     this.ctx.font = 'bold 22px "Segoe UI"';
     this.ctx.fillText(`⭐ ${this.score}`, 15, 35);
