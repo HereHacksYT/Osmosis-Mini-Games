@@ -20,7 +20,7 @@ export class BlockMine {
     this.placers = [];
     this.showBombCount = false;
     this.lastBombCount = 0;
-    this.scanRemaining = 5;
+    this.scanRemaining = 2;
 
     this.colors = {
       grass: '#7EC850',
