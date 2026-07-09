@@ -2,6 +2,7 @@ import { MiniGame2D } from './games/mini-game-2d.js';
 import { MiniGame3D } from './games/mini-game-3d.js';
 import { SecretCanvas } from './games/mini-game-2d-2.js';
 import { BlockMine } from './games/mini-game-2d-3.js';
+import { TimeArena } from './games/mini-game-2d-4.js';
 
 const menuDiv = document.getElementById('menu');
 const playerSelectDiv = document.getElementById('player-select');
@@ -33,8 +34,8 @@ function startGame(gameName, playerCount) {
   gameContainer.innerHTML = '';
   gameInstances.length = 0;
 
-  // Tam ekran oyunlar (Secret Canvas, BlockMine)
-  if (gameName === 'mini-game-2d-2' || gameName === 'mini-game-2d-3') {
+  // Tam ekran oyunlar (Secret Canvas, BlockMine, TimeArena)
+  if (gameName === 'mini-game-2d-2' || gameName === 'mini-game-2d-3' || gameName === 'mini-game-2d-4') {
     const playerDiv = document.createElement('div');
     playerDiv.className = 'player-area';
     playerDiv.style.top = '0';
@@ -53,6 +54,8 @@ function startGame(gameName, playerCount) {
       instance = new SecretCanvas(canvas, 0, playerCount);
     } else if (gameName === 'mini-game-2d-3') {
       instance = new BlockMine(canvas, 0, playerCount);
+    } else if (gameName === 'mini-game-2d-4') {
+      instance = new TimeArena(canvas, 0, playerCount);
     }
     gameInstances.push({ instance, element: playerDiv, canvas, index: 0 });
   } else {
