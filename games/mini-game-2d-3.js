@@ -20,7 +20,7 @@ export class BlockMine {
     this.placers = [];
     this.showBombCount = false;
     this.lastBombCount = 0;
-    this.scanRemaining = 5; // Kalan tarama hakkı
+    this.scanRemaining = 5;
 
     this.colors = {
       grass: '#7EC850',
@@ -160,7 +160,6 @@ export class BlockMine {
       const centerX = this.width / 2;
       const baseY = this.gridOffsetY + this.gridRows * this.cellSize + 20;
 
-      // Yön okları
       this.buttons.push({
         type: 'rect',
         x: centerX - btnSize / 2,
@@ -206,7 +205,6 @@ export class BlockMine {
         action: 'moveRight'
       });
 
-      // Etrafta Bomba Var Mı? butonu - sağ tarafta
       this.buttons.push({
         type: 'rect',
         x: this.width - 175,
@@ -256,7 +254,6 @@ export class BlockMine {
     return true;
   }
 
-  // Oyuncunun grid üzerinde bombası var mı?
   playerHasBomb(playerIdx) {
     for (let r = 0; r < this.gridRows; r++) {
       for (let c = 0; c < this.gridCols; c++) {
@@ -300,14 +297,9 @@ export class BlockMine {
       const btn = this.hitTest(px, py);
       if (btn && btn.action === 'bombPlaced') {
         const placer = this.placers[this.currentPlacer];
-        
-        // Bu oyuncu bombasını koydu mu?
         if (!this.playerHasBomb(placer)) return;
         
-        // Sonraki placer'a geç
         this.currentPlacer++;
-        
-        // Tüm placer'lar bitirdi mi?
         if (this.currentPlacer >= this.placers.length) {
           if (this.allPlayersHaveBomb()) {
             this.state = 'MOVING';
@@ -319,14 +311,12 @@ export class BlockMine {
         return;
       }
 
-      // Grid üzerinde bomba yerleştirme
       const cell = this.getGridCell(px, py);
       if (cell && this.grid[cell.row][cell.col].type === 'empty') {
         if (cell.col <= 1 || cell.col >= this.gridCols - 2) return;
 
         const placer = this.placers[this.currentPlacer];
         
-        // Bu oyuncunun önceki bombasını kaldır
         for (let r = 0; r < this.gridRows; r++) {
           for (let c = 0; c < this.gridCols; c++) {
             if (this.grid[r][c].type === 'bomb' && this.grid[r][c].owner === placer) {
@@ -336,7 +326,6 @@ export class BlockMine {
           }
         }
 
-        // Yeni bombayı yerleştir
         this.grid[cell.row][cell.col].type = 'bomb';
         this.grid[cell.row][cell.col].owner = placer;
       }
@@ -346,7 +335,6 @@ export class BlockMine {
     if (this.state === 'MOVING') {
       const btn = this.hitTest(px, py);
       if (btn) {
-        // Tarama butonu
         if (btn.action === 'scanBombs') {
           if (this.scanRemaining > 0) {
             this.scanRemaining--;
@@ -357,7 +345,6 @@ export class BlockMine {
           return;
         }
 
-        // Hareket butonları
         let newRow = this.currentPos.row;
         let newCol = this.currentPos.col;
         if (btn.action === 'moveUp') newRow--;
@@ -368,25 +355,19 @@ export class BlockMine {
         if (this.canMoveTo(newRow, newCol)) {
           this.currentPos.row = newRow;
           this.currentPos.col = newCol;
-
-          // Hareket edince sayaç gizlenir
           this.showBombCount = false;
 
-          // Bombaya basıldı mı?
           if (this.grid[newRow][newCol].type === 'bomb') {
             const bombOwner = this.grid[newRow][newCol].owner;
             this.scores[bombOwner]++;
             this.grid[newRow][newCol].type = 'exploded';
-            
             if (this.checkWin()) return;
             this.nextRunner();
             return;
           }
 
-          // Bitiş çizgisine ulaştı mı?
           if (newCol >= this.gridCols - 1) {
             this.scores[this.currentRunner]++;
-            
             if (this.checkWin()) return;
             this.nextRunner();
             return;
@@ -490,21 +471,38 @@ export class BlockMine {
           this.ctx.textBaseline = 'middle';
           this.ctx.fillText(`P${cell.owner + 1}`, x + this.cellSize / 2, y + this.cellSize / 2);
         }
+      }
+    }
 
-        // Bomba sayısı göster (showBombCount aktifse ve oyuncu bu karedeyse)
-        if (this.state === 'MOVING' && this.showBombCount && 
-            r === this.currentPos.row && c === this.currentPos.col) {
-          const textColor = this.lastBombCount >= 5 ? this.colors.dangerHigh :
-                            this.lastBombCount >= 3 ? this.colors.dangerMed :
-                            this.lastBombCount > 0 ? this.colors.dangerLow : '#FFFFFF';
-          this.ctx.fillStyle = 'rgba(0,0,0,0.6)';
-          this.ctx.fillRect(x + 2, y + 2, this.cellSize - 4, this.cellSize - 4);
-          this.ctx.fillStyle = textColor;
-          this.ctx.font = `bold ${this.cellSize * 0.7}px "Segoe UI"`;
-          this.ctx.textAlign = 'center';
-          this.ctx.textBaseline = 'middle';
-          this.ctx.fillText(this.lastBombCount, x + this.cellSize / 2, y + this.cellSize / 2);
-        }
+    // Oyuncuyu çiz (grid sonrası)
+    if (this.state === 'MOVING') {
+      const px = this.gridOffsetX + this.currentPos.col * this.cellSize;
+      const py = this.gridOffsetY + this.currentPos.row * this.cellSize;
+      this.drawPlayer(px, py, this.currentRunner);
+
+      // BOMBA SAYISI - Karakterin ÜSTÜNDE yarı saydam kutu
+      if (this.showBombCount) {
+        const cx = px + this.cellSize / 2;
+        const cy = py - this.cellSize * 0.3;
+        const boxSize = this.cellSize * 0.7;
+        
+        // Yarı saydam arka plan kutusu
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        this.ctx.fillRect(cx - boxSize / 2, cy - boxSize / 2, boxSize, boxSize);
+        this.ctx.strokeStyle = '#FFD700';
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeRect(cx - boxSize / 2, cy - boxSize / 2, boxSize, boxSize);
+        
+        // Sayı rengi
+        const textColor = this.lastBombCount >= 5 ? '#FF0000' :
+                          this.lastBombCount >= 3 ? '#FF8800' :
+                          this.lastBombCount > 0 ? '#FFCC00' : '#FFFFFF';
+        
+        this.ctx.fillStyle = textColor;
+        this.ctx.font = `bold ${boxSize * 0.7}px "Segoe UI"`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(this.lastBombCount, cx, cy);
       }
     }
   }
@@ -532,27 +530,34 @@ export class BlockMine {
     const cx = x + s / 2;
     const cy = y + s / 2;
 
+    // Ayak
     this.ctx.fillStyle = '#3D2B1F';
     this.ctx.fillRect(cx - s * 0.18, cy + s * 0.25, s * 0.12, s * 0.15);
     this.ctx.fillRect(cx + s * 0.06, cy + s * 0.25, s * 0.12, s * 0.15);
 
+    // Beden
     this.ctx.fillStyle = color;
     this.ctx.fillRect(cx - s * 0.2, cy - s * 0.1, s * 0.4, s * 0.4);
 
+    // Kollar
     this.ctx.fillStyle = color;
     this.ctx.fillRect(cx - s * 0.3, cy - s * 0.05, s * 0.1, s * 0.25);
     this.ctx.fillRect(cx + s * 0.2, cy - s * 0.05, s * 0.1, s * 0.25);
 
+    // Kafa
     this.ctx.fillStyle = '#FFDDBB';
     this.ctx.fillRect(cx - s * 0.15, cy - s * 0.35, s * 0.3, s * 0.3);
 
+    // Saç
     this.ctx.fillStyle = '#3D2B1F';
     this.ctx.fillRect(cx - s * 0.15, cy - s * 0.35, s * 0.3, s * 0.1);
 
+    // Göz
     this.ctx.fillStyle = '#000';
     this.ctx.fillRect(cx - s * 0.08, cy - s * 0.25, s * 0.05, s * 0.06);
     this.ctx.fillRect(cx + s * 0.03, cy - s * 0.25, s * 0.05, s * 0.06);
 
+    // Ağız
     this.ctx.fillStyle = '#000';
     this.ctx.fillRect(cx - s * 0.04, cy - s * 0.12, s * 0.08, s * 0.02);
   }
@@ -594,12 +599,6 @@ export class BlockMine {
 
     this.drawGrid();
 
-    if (this.state === 'MOVING') {
-      const px = this.gridOffsetX + this.currentPos.col * this.cellSize;
-      const py = this.gridOffsetY + this.currentPos.row * this.cellSize;
-      this.drawPlayer(px, py, this.currentRunner);
-    }
-
     // Üst bilgi
     this.ctx.fillStyle = 'rgba(0,0,0,0.8)';
     this.ctx.fillRect(0, 0, this.width, 72);
@@ -620,7 +619,6 @@ export class BlockMine {
     }
     this.ctx.fillText(infoText, this.width / 2, 30);
 
-    // Puan
     let scoreText = '⭐ ';
     for (let i = 0; i < this.totalPlayers; i++) {
       scoreText += `P${i + 1}: ${this.scores[i]}/4`;
