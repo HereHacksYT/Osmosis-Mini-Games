@@ -93,7 +93,7 @@ export class TimeArena {
         vy: 0,
         time: 30,
         alive: true,
-        speed: 3.5
+        speed: 1.5
       });
     }
 
@@ -106,11 +106,11 @@ export class TimeArena {
       this.dangers.push({
         x: this.width * 0.25 + Math.random() * this.width * 0.5,
         y: this.height * 0.3 + Math.random() * this.height * 0.4,
-        radius: 35 + Math.random() * 20,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
+        radius: 20,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
         rotation: 0,
-        rotSpeed: (Math.random() - 0.5) * 0.02
+        rotSpeed: (Math.random() - 0.5) * 0.015
       });
     }
   }
@@ -303,7 +303,6 @@ export class TimeArena {
       }
     }
 
-    // Oyuncu çarpışmaları
     for (let i = 0; i < this.players.length; i++) {
       for (let j = i + 1; j < this.players.length; j++) {
         const p1 = this.players[i];
@@ -340,7 +339,6 @@ export class TimeArena {
       }
     }
 
-    // Tehlike diskleri
     for (const danger of this.dangers) {
       danger.x += danger.vx;
       danger.y += danger.vy;
@@ -380,7 +378,6 @@ export class TimeArena {
       }
     }
 
-    // Zaman kristalleri
     this.crystalSpawnTimer += dt;
     if (this.crystalSpawnTimer > 3 + Math.random() * 2) {
       this.crystalSpawnTimer = 0;
@@ -454,7 +451,6 @@ export class TimeArena {
       this.ctx.stroke();
     }
     
-    // Tehlike diskleri
     for (const danger of this.dangers) {
       this.ctx.save();
       this.ctx.translate(danger.x, danger.y);
@@ -482,7 +478,6 @@ export class TimeArena {
       this.ctx.restore();
     }
     
-    // Zaman kristalleri
     for (const crystal of this.crystals) {
       crystal.pulsePhase += 0.05;
       const pulse = 1 + Math.sin(crystal.pulsePhase) * 0.2;
@@ -503,7 +498,6 @@ export class TimeArena {
       this.ctx.fillText('⌛', crystal.x, crystal.y);
     }
     
-    // Oyuncular
     for (const player of this.players) {
       if (!player.alive) continue;
       
@@ -532,7 +526,6 @@ export class TimeArena {
       this.ctx.fillText(player.id + 1, player.x, player.y);
     }
     
-    // Joystickler
     for (const joy of this.joysticks) {
       this.ctx.beginPath();
       this.ctx.arc(joy.baseX, joy.baseY, joy.radius, 0, Math.PI * 2);
@@ -557,7 +550,6 @@ export class TimeArena {
       this.ctx.fillText(`P${joy.id + 1}`, joy.baseX, joy.baseY - joy.radius - 15);
     }
     
-    // Üst bilgi çubuğu
     this.ctx.fillStyle = 'rgba(0,0,0,0.8)';
     this.ctx.fillRect(0, 0, this.width, 60);
     
