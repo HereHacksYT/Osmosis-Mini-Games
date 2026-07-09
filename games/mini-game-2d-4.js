@@ -43,8 +43,10 @@ export class TimeArena {
       dangerDark: '#8B0000'
     };
 
-    this.initGame();
+    this.buttons = [];
+
     this.resize();
+    this.initGame();
     window.addEventListener('resize', () => this.resize());
   }
 
@@ -58,6 +60,7 @@ export class TimeArena {
     this.state = 'PLAYING';
     this.activeTouches = {};
     this.lastTime = performance.now();
+    this.buttons = [];
 
     this.joysticks = [];
     const joySize = 70;
@@ -166,14 +169,12 @@ export class TimeArena {
     ];
 
     for (let i = 0; i < this.joysticks.length; i++) {
-      this.joysticks[i].baseX = positions[i].x;
-      this.joysticks[i].baseY = positions[i].y;
-      this.joysticks[i].knobX = positions[i].x;
-      this.joysticks[i].knobY = positions[i].y;
-    }
-
-    if (this.dangers.length === 0) {
-      this.spawnDangers();
+      if (this.joysticks[i]) {
+        this.joysticks[i].baseX = positions[i].x;
+        this.joysticks[i].baseY = positions[i].y;
+        this.joysticks[i].knobX = positions[i].x;
+        this.joysticks[i].knobY = positions[i].y;
+      }
     }
   }
 
@@ -183,7 +184,19 @@ export class TimeArena {
   }
 
   onTouchStart(id, relX, relY) {
-    if (this.gameOver) return;
+    if (this.gameOver) {
+      const px = relX * this.width;
+      const py = relY * this.height;
+      const btn = this.hitTest(px, py);
+      if (btn) {
+        if (btn.action === 'restart') {
+          this.initGame();
+        } else if (btn.action === 'exit') {
+          window.location.reload();
+        }
+      }
+      return;
+    }
     
     const px = relX * this.width;
     const py = relY * this.height;
@@ -233,6 +246,16 @@ export class TimeArena {
     }
   }
 
+  hitTest(x, y) {
+    for (const btn of this.buttons) {
+      if (x >= btn.x && x <= btn.x + btn.w &&
+          y >= btn.y && y <= btn.y + btn.h) {
+        return btn;
+      }
+    }
+    return null;
+  }
+
   updateJoystick(joy, px, py) {
     const dx = px - joy.baseX;
     const dy = py - joy.baseY;
@@ -264,7 +287,6 @@ export class TimeArena {
   }
 
   update() {
-    // Gerçek delta time
     const now = performance.now();
     const dt = Math.min((now - this.lastTime) / 1000, 0.1);
     this.lastTime = now;
@@ -421,6 +443,29 @@ export class TimeArena {
       this.gameOver = true;
       this.state = 'GAME_OVER';
       this.winner = alive.length === 1 ? alive[0].id : -1;
+      
+      this.buttons = [
+        {
+          x: this.width / 2 - 130,
+          y: this.height / 2 + 50,
+          w: 120,
+          h: 50,
+          color: '#4CAF50',
+          text: '🔄 Yeniden Oyna',
+          textSize: 16,
+          action: 'restart'
+        },
+        {
+          x: this.width / 2 + 10,
+          y: this.height / 2 + 50,
+          w: 120,
+          h: 50,
+          color: '#F44336',
+          text: '🚪 Çık',
+          textSize: 16,
+          action: 'exit'
+        }
+      ];
     }
   }
 
@@ -601,7 +646,7 @@ export class TimeArena {
     }
     
     if (this.gameOver) {
-      this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      this.ctx.fillStyle = 'rgba(0,0,0,0.75)';
       this.ctx.fillRect(0, 0, this.width, this.height);
       
       this.ctx.fillStyle = '#FFFFFF';
@@ -611,14 +656,27 @@ export class TimeArena {
       if (this.winner >= 0) {
         const color = this.playerColors[this.winner];
         this.ctx.fillStyle = color.main;
-        this.ctx.fillText(`🏆 ${color.name} Kazandı! 🏆`, this.width / 2, this.height / 2 - 20);
+        this.ctx.fillText(`🏆 ${color.name} Kazandı! 🏆`, this.width / 2, this.height / 2 - 30);
       } else {
-        this.ctx.fillText('💀 Berabere! 💀', this.width / 2, this.height / 2 - 20);
+        this.ctx.fillText('💀 Berabere! 💀', this.width / 2, this.height / 2 - 30);
       }
       
-      this.ctx.fillStyle = '#FFFFFF';
-      this.ctx.font = '20px "Segoe UI"';
-      this.ctx.fillText('Sayfayı yenileyerek tekrar oyna', this.width / 2, this.height / 2 + 40);
+      for (const btn of this.buttons) {
+        this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        this.ctx.fillRect(btn.x + 2, btn.y + 2, btn.w, btn.h);
+        
+        this.ctx.fillStyle = btn.color;
+        this.ctx.fillRect(btn.x, btn.y, btn.w, btn.h);
+        this.ctx.strokeStyle = '#FFF';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(btn.x, btn.y, btn.w, btn.h);
+        
+        this.ctx.fillStyle = '#FFF';
+        this.ctx.font = `bold ${btn.textSize}px "Segoe UI"`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(btn.text, btn.x + btn.w / 2, btn.y + btn.h / 2);
+      }
     }
   }
 }
