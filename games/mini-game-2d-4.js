@@ -8,29 +8,23 @@ export class TimeArena {
     this.width = 0;
     this.height = 0;
     
-    // Oyuncu verileri
     this.players = [];
     this.alivePlayers = 0;
     
-    // Joystick verileri
     this.joysticks = [];
     this.activeTouches = {};
     
-    // Zaman kristalleri
     this.crystals = [];
     this.crystalSpawnTimer = 0;
     this.maxCrystals = 3;
     
-    // Tehlike diskleri
     this.dangers = [];
     this.maxDangers = 4;
     
-    // Oyun durumu
     this.state = 'PLAYING';
     this.gameOver = false;
     this.winner = -1;
     
-    // Renk paleti - mat, saf, canlı
     this.playerColors = [
       { main: '#E63946', light: '#FF6B6B', dark: '#B71C1C', name: 'Kırmızı' },
       { main: '#2196F3', light: '#64B5F6', dark: '#0D47A1', name: 'Mavi' },
@@ -62,16 +56,15 @@ export class TimeArena {
     this.state = 'PLAYING';
     this.activeTouches = {};
 
-    // Joystick pozisyonları - köşelere yerleştir
     this.joysticks = [];
     const joySize = 70;
     const margin = 30;
     
     const positions = [
-      { x: margin + joySize, y: this.height - margin - joySize },        // P1: Sol alt
-      { x: this.width - margin - joySize, y: this.height - margin - joySize }, // P2: Sağ alt
-      { x: margin + joySize, y: margin + joySize + 60 },                  // P3: Sol üst
-      { x: this.width - margin - joySize, y: margin + joySize + 60 }      // P4: Sağ üst
+      { x: margin + joySize, y: this.height - margin - joySize },
+      { x: this.width - margin - joySize, y: this.height - margin - joySize },
+      { x: margin + joySize, y: margin + joySize + 60 },
+      { x: this.width - margin - joySize, y: margin + joySize + 60 }
     ];
 
     for (let i = 0; i < this.totalPlayers; i++) {
@@ -88,7 +81,6 @@ export class TimeArena {
         touchId: null
       });
 
-      // Oyuncu başlangıç pozisyonu - arena merkezi etrafına dağıt
       const angle = (i / this.totalPlayers) * Math.PI * 2;
       const spawnDist = Math.min(this.width, this.height) * 0.15;
       this.players.push({
@@ -99,13 +91,12 @@ export class TimeArena {
         color: this.playerColors[i],
         vx: 0,
         vy: 0,
-        time: 15,
+        time: 30,
         alive: true,
         speed: 3.5
       });
     }
 
-    // Tehlike diskleri oluştur
     this.spawnDangers();
   }
 
@@ -113,13 +104,13 @@ export class TimeArena {
     this.dangers = [];
     for (let i = 0; i < this.maxDangers; i++) {
       this.dangers.push({
-        x: this.width * 0.2 + Math.random() * this.width * 0.6,
-        y: this.height * 0.25 + Math.random() * this.height * 0.5,
+        x: this.width * 0.25 + Math.random() * this.width * 0.5,
+        y: this.height * 0.3 + Math.random() * this.height * 0.4,
         radius: 35 + Math.random() * 20,
-        vx: (Math.random() - 0.5) * 1.5,
-        vy: (Math.random() - 0.5) * 1.5,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
         rotation: 0,
-        rotSpeed: (Math.random() - 0.5) * 0.05
+        rotSpeed: (Math.random() - 0.5) * 0.02
       });
     }
   }
@@ -139,7 +130,7 @@ export class TimeArena {
       x,
       y,
       radius: 18,
-      timeBonus: 5,
+      timeBonus: 8,
       pulsePhase: Math.random() * Math.PI * 2,
       collected: false
     });
@@ -162,7 +153,6 @@ export class TimeArena {
     this.canvas.width = this.width;
     this.canvas.height = this.height;
 
-    // Joystick pozisyonlarını güncelle
     const joySize = 70;
     const margin = 30;
     const positions = [
@@ -195,7 +185,6 @@ export class TimeArena {
     const px = relX * this.width;
     const py = relY * this.height;
     
-    // Hangi joystick'e dokunuldu?
     for (const joy of this.joysticks) {
       const dx = px - joy.baseX;
       const dy = py - joy.baseY;
@@ -280,25 +269,20 @@ export class TimeArena {
 
     const dt = 1 / 60;
 
-    // Oyuncuları güncelle
     for (const player of this.players) {
       if (!player.alive) continue;
 
-      // Joystick input
       const input = this.getJoystickInput(player.id);
       
-      // Hızlanma
       const targetVx = input.x * player.speed;
       const targetVy = input.y * player.speed;
       
       player.vx += (targetVx - player.vx) * 0.15;
       player.vy += (targetVy - player.vy) * 0.15;
       
-      // Hareket
       player.x += player.vx;
       player.y += player.vy;
       
-      // Arena sınırları (üst bar için 60px boşluk)
       const minX = player.radius;
       const maxX = this.width - player.radius;
       const minY = 60 + player.radius;
@@ -309,7 +293,6 @@ export class TimeArena {
       if (player.y < minY) { player.y = minY; player.vy *= -0.3; }
       if (player.y > maxY) { player.y = maxY; player.vy *= -0.3; }
       
-      // Zaman azalması
       player.time -= dt;
       if (player.time <= 0) {
         player.alive = false;
@@ -357,13 +340,12 @@ export class TimeArena {
       }
     }
 
-    // Tehlike diskleri güncelle
+    // Tehlike diskleri
     for (const danger of this.dangers) {
       danger.x += danger.vx;
       danger.y += danger.vy;
       danger.rotation += danger.rotSpeed;
       
-      // Duvarlardan sekme
       if (danger.x - danger.radius < 0 || danger.x + danger.radius > this.width) {
         danger.vx *= -1;
       }
@@ -371,7 +353,6 @@ export class TimeArena {
         danger.vy *= -1;
       }
       
-      // Oyuncu ile çarpışma
       for (const player of this.players) {
         if (!player.alive) continue;
         
@@ -381,9 +362,8 @@ export class TimeArena {
         const minDist = player.radius + danger.radius;
         
         if (dist < minDist) {
-          player.time -= 3 * dt;
+          player.time -= 10 * dt;
           
-          // İtme kuvveti
           const nx = dx / (dist || 1);
           const ny = dy / (dist || 1);
           player.vx += nx * 5 * dt;
@@ -444,11 +424,9 @@ export class TimeArena {
   draw() {
     this.ctx.clearRect(0, 0, this.width, this.height);
     
-    // Arka plan
     this.ctx.fillStyle = this.colors.bg;
     this.ctx.fillRect(0, 0, this.width, this.height);
     
-    // Arena zemini
     const arenaX = 0;
     const arenaY = 60;
     const arenaW = this.width;
@@ -460,7 +438,6 @@ export class TimeArena {
     this.ctx.lineWidth = 3;
     this.ctx.strokeRect(arenaX, arenaY, arenaW, arenaH);
     
-    // Izgara deseni (ince)
     this.ctx.strokeStyle = 'rgba(255,255,255,0.03)';
     this.ctx.lineWidth = 1;
     const gridSize = 40;
@@ -483,7 +460,6 @@ export class TimeArena {
       this.ctx.translate(danger.x, danger.y);
       this.ctx.rotate(danger.rotation);
       
-      // Ana disk
       this.ctx.beginPath();
       this.ctx.arc(0, 0, danger.radius, 0, Math.PI * 2);
       this.ctx.fillStyle = this.colors.danger;
@@ -492,13 +468,11 @@ export class TimeArena {
       this.ctx.lineWidth = 4;
       this.ctx.stroke();
       
-      // İç desen
       this.ctx.beginPath();
       this.ctx.arc(0, 0, danger.radius * 0.5, 0, Math.PI * 2);
       this.ctx.fillStyle = this.colors.dangerDark;
       this.ctx.fill();
       
-      // Tehlike işareti
       this.ctx.fillStyle = '#FFD600';
       this.ctx.font = `bold ${danger.radius * 0.8}px "Segoe UI"`;
       this.ctx.textAlign = 'center';
@@ -522,7 +496,6 @@ export class TimeArena {
       this.ctx.lineWidth = 3;
       this.ctx.stroke();
       
-      // Kristal içi
       this.ctx.fillStyle = '#FFFFFF';
       this.ctx.font = `bold ${r * 0.9}px "Segoe UI"`;
       this.ctx.textAlign = 'center';
@@ -534,13 +507,11 @@ export class TimeArena {
     for (const player of this.players) {
       if (!player.alive) continue;
       
-      // Gölge
       this.ctx.beginPath();
       this.ctx.arc(player.x + 3, player.y + 3, player.radius, 0, Math.PI * 2);
       this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
       this.ctx.fill();
       
-      // Ana daire
       this.ctx.beginPath();
       this.ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
       this.ctx.fillStyle = player.color.main;
@@ -549,13 +520,11 @@ export class TimeArena {
       this.ctx.lineWidth = 3;
       this.ctx.stroke();
       
-      // İç daire
       this.ctx.beginPath();
       this.ctx.arc(player.x, player.y, player.radius * 0.55, 0, Math.PI * 2);
       this.ctx.fillStyle = player.color.light;
       this.ctx.fill();
       
-      // Oyuncu numarası
       this.ctx.fillStyle = '#FFFFFF';
       this.ctx.font = `bold ${player.radius * 0.9}px "Segoe UI"`;
       this.ctx.textAlign = 'center';
@@ -565,7 +534,6 @@ export class TimeArena {
     
     // Joystickler
     for (const joy of this.joysticks) {
-      // Taban
       this.ctx.beginPath();
       this.ctx.arc(joy.baseX, joy.baseY, joy.radius, 0, Math.PI * 2);
       this.ctx.fillStyle = 'rgba(255,255,255,0.08)';
@@ -574,7 +542,6 @@ export class TimeArena {
       this.ctx.lineWidth = 2;
       this.ctx.stroke();
       
-      // Kol
       this.ctx.beginPath();
       this.ctx.arc(joy.knobX, joy.knobY, joy.knobRadius, 0, Math.PI * 2);
       this.ctx.fillStyle = joy.active ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)';
@@ -583,7 +550,6 @@ export class TimeArena {
       this.ctx.lineWidth = 2;
       this.ctx.stroke();
       
-      // Oyuncu numarası
       this.ctx.fillStyle = '#FFFFFF';
       this.ctx.font = 'bold 14px "Segoe UI"';
       this.ctx.textAlign = 'center';
@@ -602,12 +568,11 @@ export class TimeArena {
       const barH = 22;
       const barY = 8;
       
-      // Süre çubuğu arka plan
       this.ctx.fillStyle = 'rgba(255,255,255,0.15)';
       this.ctx.fillRect(barX, barY, barW, barH);
       
       if (player.alive) {
-        const timeRatio = Math.max(0, player.time / 15);
+        const timeRatio = Math.max(0, player.time / 30);
         const barColor = timeRatio > 0.5 ? player.color.main : 
                          timeRatio > 0.25 ? '#FF9800' : '#F44336';
         
@@ -623,24 +588,20 @@ export class TimeArena {
         continue;
       }
       
-      // Oyuncu adı
       this.ctx.fillStyle = '#FFFFFF';
       this.ctx.font = 'bold 13px "Segoe UI"';
       this.ctx.textAlign = 'left';
       this.ctx.fillText(`P${i + 1}`, barX, barY + barH + 18);
       
-      // Süre
       this.ctx.textAlign = 'right';
       this.ctx.fillText(`${Math.ceil(player.time)}s`, barX + barW, barY + barH + 18);
     }
     
-    // Alt bilgi
     if (!this.gameOver) {
       this.ctx.fillStyle = 'rgba(0,0,0,0.6)';
       this.ctx.fillRect(0, this.height - 180, this.width, 180);
     }
     
-    // Oyun sonu mesajı
     if (this.gameOver) {
       this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
       this.ctx.fillRect(0, 0, this.width, this.height);
