@@ -5,51 +5,44 @@ export class BlockMine {
     this.totalPlayers = totalPlayers;
     this.playerIndex = playerIndex;
 
-    // Oyun durumu
-    this.state = 'MENU'; // MENU, BOMB_PLACING, MOVING, RESULT, GAME_OVER
-    this.currentPlayer = 0; // Şu anki aktif oyuncu (0-tabanlı)
-    this.scores = []; // Her oyuncunun puanı
+    this.state = 'MENU';
+    this.currentPlayer = 0;
+    this.scores = [];
     this.winner = -1;
-    this.grid = []; // 2D matris
+    this.grid = [];
     this.gridRows = 12;
     this.gridCols = 8;
     this.cellSize = 0;
     this.gridOffsetX = 0;
     this.gridOffsetY = 0;
     this.bombsPlaced = 0;
-    this.playerPositions = []; // Her oyuncunun başlangıç pozisyonu
-    this.currentPos = { row: 0, col: 0 }; // Şu anki hareket eden oyuncunun pozisyonu
-    this.turnPhase = 'placing'; // 'placing' veya 'moving'
-    this.roundActive = false;
+    this.playerPositions = [];
+    this.currentPos = { row: 0, col: 0 };
+    this.turnPhase = 'placing';
 
-    // Renk paleti - Minecraft tarzı mat canlı renkler
     this.colors = {
-      grass: '#7EC850',       // Parlak çimen yeşili
-      dirt: '#B8763A',        // Canlı toprak kahverengisi
-      path: '#D4A056',        // Patika
-      treeTrunk: '#6B4226',   // Ağaç gövdesi
-      treeLeaves: '#4AA52E',  // Canlı yaprak yeşili
+      grass: '#7EC850',
+      dirt: '#B8763A',
+      path: '#D4A056',
+      treeTrunk: '#6B4226',
+      treeLeaves: '#4AA52E',
       treeLeavesDark: '#3D8B26',
-      player: '#FFFFFF',      // Oyuncu
-      bomb: '#FF3333',        // Patlayan bomba
-      gridLine: '#8B6914',    // Izgara çizgisi
-      bg: '#5C4033',          // Arka plan koyu kahve
-      startZone: '#55AA33',   // Başlangıç bölgesi
-      endZone: '#FFD700',     // Bitiş bölgesi
+      player: '#FFFFFF',
+      bomb: '#FF3333',
+      gridLine: '#8B6914',
+      bg: '#5C4033',
+      startZone: '#55AA33',
+      endZone: '#FFD700',
       dangerHigh: '#FF0000',
       dangerMed: '#FF8800',
       dangerLow: '#FFCC00',
       safe: '#FFFFFF'
     };
 
-    // Oyuncu renkleri (kafa bandı/giysi)
     this.playerColors = ['#FF4444', '#4488FF', '#44FF44', '#FFAA00'];
-
-    // Butonlar
     this.buttons = [];
     this.touchActive = false;
 
-    // Başlangıç
     this.resetGame();
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -62,7 +55,6 @@ export class BlockMine {
     this.currentPlayer = 0;
     this.bombsPlaced = 0;
     this.turnPhase = 'placing';
-    this.roundActive = false;
     this.initGrid();
     this.defineButtons();
   }
@@ -73,18 +65,13 @@ export class BlockMine {
       this.grid[r] = [];
       for (let c = 0; c < this.gridCols; c++) {
         this.grid[r][c] = {
-          type: 'empty', // 'empty', 'tree', 'bomb'
+          type: 'empty',
           owner: -1,
           treeStyle: 0
         };
       }
     }
 
-    // Başlangıç ve bitiş bölgeleri (boş kalacak)
-    // Başlangıç: sol taraf (col 0-1)
-    // Bitiş: sağ taraf (col gridCols-2, gridCols-1)
-
-    // Ağaç yerleştirme (%10 alan)
     const totalCells = this.gridRows * this.gridCols;
     const targetTrees = Math.floor(totalCells * 0.10);
     let treesPlaced = 0;
@@ -93,7 +80,6 @@ export class BlockMine {
       const r = Math.floor(Math.random() * this.gridRows);
       const c = Math.floor(Math.random() * this.gridCols);
 
-      // Başlangıç ve bitiş bölgelerine ağaç koyma
       if (c <= 1 || c >= this.gridCols - 2) continue;
       if (this.grid[r][c].type === 'empty') {
         this.grid[r][c].type = 'tree';
@@ -102,7 +88,6 @@ export class BlockMine {
       }
     }
 
-    // Başlangıç pozisyonları
     this.playerPositions = [];
     for (let i = 0; i < this.totalPlayers; i++) {
       const row = 1 + Math.floor(Math.random() * (this.gridRows - 2));
@@ -118,8 +103,7 @@ export class BlockMine {
     this.canvas.width = this.width;
     this.canvas.height = this.height;
 
-    // Grid boyutlandırma
-    const availableHeight = this.height - 200; // Alt ve üst boşluk
+    const availableHeight = this.height - 200;
     const availableWidth = this.width - 40;
     this.cellSize = Math.floor(Math.min(
       availableWidth / this.gridCols,
@@ -158,13 +142,11 @@ export class BlockMine {
         action: 'bombPlaced'
       });
     } else if (this.state === 'MOVING') {
-      // Yön okları - altta ortada
       const arrowSize = 50;
       const arrowGap = 10;
       const centerX = this.width / 2;
       const baseY = this.height - 130;
 
-      // Yukarı
       this.buttons.push({
         type: 'rect',
         x: centerX - arrowSize / 2,
@@ -176,7 +158,6 @@ export class BlockMine {
         textSize: 24,
         action: 'moveUp'
       });
-      // Sol
       this.buttons.push({
         type: 'rect',
         x: centerX - arrowSize - arrowGap,
@@ -188,7 +169,6 @@ export class BlockMine {
         textSize: 24,
         action: 'moveLeft'
       });
-      // Aşağı
       this.buttons.push({
         type: 'rect',
         x: centerX - arrowSize / 2,
@@ -200,7 +180,6 @@ export class BlockMine {
         textSize: 24,
         action: 'moveDown'
       });
-      // Sağ
       this.buttons.push({
         type: 'rect',
         x: centerX + arrowGap,
@@ -227,7 +206,6 @@ export class BlockMine {
     }
   }
 
-  // Komşu 8 karedeki bomba sayısını hesapla
   countAdjacentBombs(row, col) {
     let count = 0;
     for (let dr = -1; dr <= 1; dr++) {
@@ -245,7 +223,6 @@ export class BlockMine {
     return count;
   }
 
-  // Hareket geçerli mi?
   canMoveTo(row, col) {
     if (row < 0 || row >= this.gridRows || col < 0 || col >= this.gridCols) return false;
     if (this.grid[row][col].type === 'tree') return false;
@@ -276,10 +253,8 @@ export class BlockMine {
     if (this.state === 'BOMB_PLACING') {
       const btn = this.hitTest(px, py);
       if (btn && btn.action === 'bombPlaced') {
-        // Bomba yerleştirildi, sonraki oyuncuya geç
         this.currentPlayer++;
         if (this.currentPlayer >= this.totalPlayers) {
-          // Tüm bombalar yerleşti, hareket aşamasına geç
           this.state = 'MOVING';
           this.currentPlayer = 0;
           this.turnPhase = 'moving';
@@ -289,10 +264,8 @@ export class BlockMine {
         return;
       }
 
-      // Grid üzerinde bomba yerleştirme
       const cell = this.getGridCell(px, py);
       if (cell && this.grid[cell.row][cell.col].type === 'empty') {
-        // Başlangıç ve bitiş bölgelerine bomba konulamaz
         if (cell.col <= 1 || cell.col >= this.gridCols - 2) return;
         this.grid[cell.row][cell.col].type = 'bomb';
         this.grid[cell.row][cell.col].owner = this.currentPlayer;
@@ -314,7 +287,6 @@ export class BlockMine {
           this.currentPos.row = newRow;
           this.currentPos.col = newCol;
 
-          // Bombaya basıldı mı?
           if (this.grid[newRow][newCol].type === 'bomb') {
             const bombOwner = this.grid[newRow][newCol].owner;
             this.scores[bombOwner]++;
@@ -323,7 +295,6 @@ export class BlockMine {
             return;
           }
 
-          // Bitiş çizgisine ulaştı mı? (sağ kenar)
           if (newCol >= this.gridCols - 1) {
             this.scores[this.currentPlayer]++;
             this.checkWinOrNext();
@@ -354,7 +325,6 @@ export class BlockMine {
   onTouchEnd(id, relX, relY) {}
 
   checkWinOrNext() {
-    // Puan kontrolü
     for (let i = 0; i < this.totalPlayers; i++) {
       if (this.scores[i] >= 4) {
         this.winner = i;
@@ -364,10 +334,8 @@ export class BlockMine {
       }
     }
 
-    // Sonraki oyuncu hareket etsin
     this.currentPlayer++;
     if (this.currentPlayer >= this.totalPlayers) {
-      // Tur bitti, yeni tura geç
       this.state = 'RESULT';
       this.defineButtons();
     } else {
@@ -395,7 +363,6 @@ export class BlockMine {
     return null;
   }
 
-  // Çizim fonksiyonları
   drawGrid() {
     for (let r = 0; r < this.gridRows; r++) {
       for (let c = 0; c < this.gridCols; c++) {
@@ -403,28 +370,23 @@ export class BlockMine {
         const y = this.gridOffsetY + r * this.cellSize;
         const cell = this.grid[r][c];
 
-        // Zemin rengi
         if (c <= 1) {
           this.ctx.fillStyle = this.colors.startZone;
         } else if (c >= this.gridCols - 2) {
           this.ctx.fillStyle = this.colors.endZone;
         } else {
-          // Desenli toprak/çimen
           this.ctx.fillStyle = ((r + c) % 2 === 0) ? this.colors.grass : this.colors.dirt;
         }
         this.ctx.fillRect(x, y, this.cellSize, this.cellSize);
 
-        // Izgara çizgisi
         this.ctx.strokeStyle = this.colors.gridLine;
         this.ctx.lineWidth = 1;
         this.ctx.strokeRect(x, y, this.cellSize, this.cellSize);
 
-        // Ağaç çizimi
         if (cell.type === 'tree') {
           this.drawTree(x, y, cell.treeStyle);
         }
 
-        // Patlamış bomba
         if (cell.type === 'exploded') {
           this.ctx.fillStyle = '#FF0000';
           this.ctx.fillRect(x + 4, y + 4, this.cellSize - 8, this.cellSize - 8);
@@ -434,7 +396,6 @@ export class BlockMine {
           this.ctx.fillText('💥', x + this.cellSize / 2, y + this.cellSize * 0.7);
         }
 
-        // Bomba yerleştirme aşamasında bombaları göster (sadece sahibi görür)
         if (this.state === 'BOMB_PLACING' && cell.type === 'bomb') {
           this.ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
           this.ctx.fillRect(x + 6, y + 6, this.cellSize - 12, this.cellSize - 12);
@@ -443,7 +404,6 @@ export class BlockMine {
           this.ctx.fillText(`P${cell.owner + 1}`, x + this.cellSize / 2, y + this.cellSize * 0.65);
         }
 
-        // Hareket aşamasında sayaçları göster (sadece oyuncunun bulunduğu karede)
         if (this.state === 'MOVING' && r === this.currentPos.row && c === this.currentPos.col) {
           const bombCount = this.countAdjacentBombs(r, c);
           if (bombCount > 0) {
@@ -461,18 +421,15 @@ export class BlockMine {
 
   drawTree(x, y, style) {
     const s = this.cellSize;
-    // Gövde
     this.ctx.fillStyle = this.colors.treeTrunk;
     this.ctx.fillRect(x + s * 0.4, y + s * 0.3, s * 0.2, s * 0.6);
 
-    // Yapraklar
     this.ctx.fillStyle = style === 0 ? this.colors.treeLeaves : 
                          style === 1 ? '#5CB840' : '#3D8B26';
     this.ctx.fillRect(x + s * 0.15, y + s * 0.05, s * 0.7, s * 0.35);
     this.ctx.fillRect(x + s * 0.1, y + s * 0.15, s * 0.8, s * 0.3);
     this.ctx.fillRect(x + s * 0.2, y + s * 0.0, s * 0.6, s * 0.2);
 
-    // Yaprak detayı
     this.ctx.fillStyle = style === 0 ? this.colors.treeLeavesDark : '#4AA52E';
     this.ctx.fillRect(x + s * 0.25, y + s * 0.1, s * 0.5, s * 0.12);
   }
@@ -483,44 +440,35 @@ export class BlockMine {
     const cx = x + s / 2;
     const cy = y + s / 2;
 
-    // Beden
     this.ctx.fillStyle = color;
     this.ctx.fillRect(cx - s * 0.2, cy - s * 0.1, s * 0.4, s * 0.4);
 
-    // Kafa
     this.ctx.fillStyle = '#FFDDBB';
     this.ctx.fillRect(cx - s * 0.15, cy - s * 0.35, s * 0.3, s * 0.3);
 
-    // Gözler
     this.ctx.fillStyle = '#000';
     this.ctx.fillRect(cx - s * 0.08, cy - s * 0.28, s * 0.06, s * 0.06);
     this.ctx.fillRect(cx + s * 0.02, cy - s * 0.28, s * 0.06, s * 0.06);
 
-    // Minecraft tarzı piksel gölge
     this.ctx.fillStyle = 'rgba(0,0,0,0.15)';
     this.ctx.fillRect(x + s * 0.7, y + s * 0.1, s * 0.08, s * 0.5);
   }
 
   drawButtons() {
     for (const btn of this.buttons) {
-      // Gölge
       this.ctx.fillStyle = 'rgba(0,0,0,0.4)';
       this.ctx.fillRect(btn.x + 3, btn.y + 3, btn.w, btn.h);
 
-      // Ana buton
       this.ctx.fillStyle = btn.color;
       this.ctx.fillRect(btn.x, btn.y, btn.w, btn.h);
 
-      // Kenar (Minecraft tarzı kalın çerçeve)
       this.ctx.strokeStyle = '#3D2B1F';
       this.ctx.lineWidth = 3;
       this.ctx.strokeRect(btn.x, btn.y, btn.w, btn.h);
 
-      // Üst highlight
       this.ctx.fillStyle = 'rgba(255,255,255,0.2)';
       this.ctx.fillRect(btn.x + 3, btn.y + 3, btn.w - 6, btn.h / 2 - 3);
 
-      // Metin
       this.ctx.fillStyle = '#FFFFFF';
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
@@ -532,21 +480,17 @@ export class BlockMine {
   update() {
     this.ctx.clearRect(0, 0, this.width, this.height);
 
-    // Arka plan
     this.ctx.fillStyle = this.colors.bg;
     this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Izgara
     this.drawGrid();
 
-    // Oyuncuyu çiz (hareket aşamasında)
     if (this.state === 'MOVING') {
       const px = this.gridOffsetX + this.currentPos.col * this.cellSize;
       const py = this.gridOffsetY + this.currentPos.row * this.cellSize;
       this.drawPlayer(px, py, this.currentPlayer);
     }
 
-    // Üst bilgi çubuğu
     this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
     this.ctx.fillRect(0, 0, this.width, 70);
     this.ctx.fillStyle = '#FFFFFF';
@@ -554,7 +498,9 @@ export class BlockMine {
     this.ctx.textAlign = 'center';
 
     let infoText = '';
-    if (this.state === 'BOMB_PLACING') {
+    if (this.state === 'MENU') {
+      infoText = '⛏️ BlockMine - Mayın Tarlası';
+    } else if (this.state === 'BOMB_PLACING') {
       infoText = `Oyuncu ${this.currentPlayer + 1} - Bombanı yerleştir (ızgara üstüne tıkla)`;
     } else if (this.state === 'MOVING') {
       infoText = `Oyuncu ${this.currentPlayer + 1} hareket ediyor - Bitişe ulaş!`;
@@ -565,7 +511,6 @@ export class BlockMine {
     }
     this.ctx.fillText(infoText, this.width / 2, 30);
 
-    // Puan tablosu
     let scoreText = 'Puanlar: ';
     for (let i = 0; i < this.totalPlayers; i++) {
       scoreText += `P${i + 1}: ${this.scores[i]}`;
@@ -573,7 +518,6 @@ export class BlockMine {
     }
     this.ctx.fillText(scoreText, this.width / 2, 58);
 
-    // Butonlar
     this.drawButtons();
 
     requestAnimationFrame(() => this.update());
