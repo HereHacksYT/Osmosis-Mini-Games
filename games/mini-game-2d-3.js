@@ -53,7 +53,7 @@ export class BlockMine {
     this.currentPlacer = 0;
     this.showBombCount = false;
     this.lastBombCount = 0;
-    this.scanRemaining = 5;
+    this.scanRemaining = 2;
     this.initGrid();
     this.defineButtons();
   }
@@ -64,7 +64,7 @@ export class BlockMine {
     this.currentPlacer = 0;
     this.showBombCount = false;
     this.lastBombCount = 0;
-    this.scanRemaining = 5;
+    this.scanRemaining = 2;
     this.setupPlacers();
     this.defineButtons();
   }
