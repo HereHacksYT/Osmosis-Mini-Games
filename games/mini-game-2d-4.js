@@ -25,6 +25,8 @@ export class TimeArena {
     this.gameOver = false;
     this.winner = -1;
     
+    this.lastTime = 0;
+    
     this.playerColors = [
       { main: '#E63946', light: '#FF6B6B', dark: '#B71C1C', name: 'Kırmızı' },
       { main: '#2196F3', light: '#64B5F6', dark: '#0D47A1', name: 'Mavi' },
@@ -55,6 +57,7 @@ export class TimeArena {
     this.winner = -1;
     this.state = 'PLAYING';
     this.activeTouches = {};
+    this.lastTime = performance.now();
 
     this.joysticks = [];
     const joySize = 70;
@@ -82,7 +85,7 @@ export class TimeArena {
       });
 
       const angle = (i / this.totalPlayers) * Math.PI * 2;
-      const spawnDist = Math.min(this.width, this.height) * 0.15;
+      const spawnDist = Math.min(this.width, this.height) * 0.12;
       this.players.push({
         id: i,
         x: this.width / 2 + Math.cos(angle) * spawnDist,
@@ -93,7 +96,7 @@ export class TimeArena {
         vy: 0,
         time: 30,
         alive: true,
-        speed: 1.5
+        speed: 1.0
       });
     }
 
@@ -261,13 +264,16 @@ export class TimeArena {
   }
 
   update() {
+    // Gerçek delta time
+    const now = performance.now();
+    const dt = Math.min((now - this.lastTime) / 1000, 0.1);
+    this.lastTime = now;
+
     if (this.gameOver) {
       this.draw();
       requestAnimationFrame(() => this.update());
       return;
     }
-
-    const dt = 1 / 60;
 
     for (const player of this.players) {
       if (!player.alive) continue;
@@ -277,8 +283,8 @@ export class TimeArena {
       const targetVx = input.x * player.speed;
       const targetVy = input.y * player.speed;
       
-      player.vx += (targetVx - player.vx) * 0.15;
-      player.vy += (targetVy - player.vy) * 0.15;
+      player.vx += (targetVx - player.vx) * 8 * dt;
+      player.vy += (targetVy - player.vy) * 8 * dt;
       
       player.x += player.vx;
       player.y += player.vy;
