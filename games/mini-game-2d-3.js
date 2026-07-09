@@ -6,7 +6,8 @@ export class BlockMine {
     this.playerIndex = playerIndex;
 
     this.state = 'MENU';
-    this.currentPlayer = 0;
+    this.currentRunner = 0; // Karşıya geçmeye çalışan oyuncu
+    this.currentPlacer = 0; // Bomba koyma sırası
     this.scores = [];
     this.winner = -1;
     this.grid = [];
@@ -15,9 +16,11 @@ export class BlockMine {
     this.cellSize = 0;
     this.gridOffsetX = 0;
     this.gridOffsetY = 0;
-    this.playerPositions = [];
     this.currentPos = { row: 0, col: 0 };
-    this.bombsPlacedByPlayer = [];
+    this.bombsPlacedCount = 0; // Bu turda kaç bomba kondu
+    this.maxBombsPerPlayer = 2; // Her oyuncu 2 bomba koyar
+    this.bombsNeeded = 0; // Toplam konması gereken bomba
+    this.placers = []; // Bomba koyacak oyuncular (koşucu hariç)
 
     this.colors = {
       grass: '#7EC850',
@@ -46,10 +49,32 @@ export class BlockMine {
     this.scores = new Array(this.totalPlayers).fill(0);
     this.winner = -1;
     this.state = 'MENU';
-    this.currentPlayer = 0;
-    this.bombsPlacedByPlayer = new Array(this.totalPlayers).fill(false);
+    this.currentRunner = 0;
+    this.currentPlacer = 0;
+    this.bombsPlacedCount = 0;
     this.initGrid();
     this.defineButtons();
+  }
+
+  // Yeni tur başlat (harita yenilenir, puanlar kalır)
+  newRound() {
+    this.initGrid();
+    this.state = 'BOMB_PLACING';
+    this.currentPlacer = 0;
+    this.bombsPlacedCount = 0;
+    this.setupPlacers();
+    this.defineButtons();
+  }
+
+  // Bomba koyacakları ayarla (koşucu hariç)
+  setupPlacers() {
+    this.placers = [];
+    for (let i = 0; i < this.totalPlayers; i++) {
+      if (i !== this.currentRunner) {
+        this.placers.push(i);
+      }
+    }
+    this.bombsNeeded = this.placers.length * this.maxBombsPerPlayer;
   }
 
   initGrid() {
@@ -81,17 +106,9 @@ export class BlockMine {
       }
     }
 
-    this.playerPositions = [];
-    const usedRows = new Set();
-    for (let i = 0; i < this.totalPlayers; i++) {
-      let row;
-      do {
-        row = Math.floor(Math.random() * this.gridRows);
-      } while (usedRows.has(row) && usedRows.size < this.gridRows);
-      usedRows.add(row);
-      this.playerPositions.push({ row, col: 0 });
-    }
-    this.currentPos = { ...this.playerPositions[0] };
+    // Koşucunun başlangıç pozisyonu
+    const row = Math.floor(Math.random() * this.gridRows);
+    this.currentPos = { row, col: 0 };
   }
 
   resize() {
@@ -101,7 +118,7 @@ export class BlockMine {
     this.canvas.width = this.width;
     this.canvas.height = this.height;
 
-    const availableHeight = this.height - 200;
+    const availableHeight = this.height - 220;
     const availableWidth = this.width - 40;
     this.cellSize = Math.floor(Math.min(
       availableWidth / this.gridCols,
@@ -128,81 +145,108 @@ export class BlockMine {
         action: 'startGame'
       });
     } else if (this.state === 'BOMB_PLACING') {
-      // Bombayı Yerleştir butonu
       this.buttons.push({
         type: 'rect',
-        x: this.width / 2 - 140,
-        y: this.height - 75,
-        w: 280,
-        h: 60,
+        x: this.width / 2 - 130,
+        y: this.gridOffsetY + this.gridRows * this.cellSize + 15,
+        w: 260,
+        h: 55,
         color: '#B8763A',
         text: '💣 Bombayı Yerleştir',
-        textSize: 20,
+        textSize: 19,
         action: 'bombPlaced'
       });
     } else if (this.state === 'MOVING') {
-      const arrowSize = 50;
-      const arrowGap = 10;
+      const arrowSize = 48;
+      const arrowGap = 8;
       const centerX = this.width / 2;
-      const baseY = this.height - 130;
+      const baseY = this.gridOffsetY + this.gridRows * this.cellSize + 25;
 
       this.buttons.push({
         type: 'rect',
         x: centerX - arrowSize / 2,
-        y: baseY - arrowSize - arrowGap / 2,
+        y: baseY,
         w: arrowSize,
         h: arrowSize,
         color: '#6B4226',
         text: '⬆',
-        textSize: 24,
+        textSize: 22,
         action: 'moveUp'
       });
       this.buttons.push({
         type: 'rect',
         x: centerX - arrowSize - arrowGap,
-        y: baseY,
+        y: baseY + arrowSize + arrowGap,
         w: arrowSize,
         h: arrowSize,
         color: '#6B4226',
         text: '⬅',
-        textSize: 24,
+        textSize: 22,
         action: 'moveLeft'
       });
       this.buttons.push({
         type: 'rect',
         x: centerX - arrowSize / 2,
-        y: baseY + arrowSize + arrowGap / 2,
+        y: baseY + (arrowSize + arrowGap) * 2,
         w: arrowSize,
         h: arrowSize,
         color: '#6B4226',
         text: '⬇',
-        textSize: 24,
+        textSize: 22,
         action: 'moveDown'
       });
       this.buttons.push({
         type: 'rect',
         x: centerX + arrowGap,
-        y: baseY,
+        y: baseY + arrowSize + arrowGap,
         w: arrowSize,
         h: arrowSize,
         color: '#6B4226',
         text: '➡',
-        textSize: 24,
+        textSize: 22,
         action: 'moveRight'
       });
-    } else if (this.state === 'GAME_OVER' || this.state === 'RESULT') {
+    } else if (this.state === 'GAME_OVER') {
       this.buttons.push({
         type: 'rect',
         x: this.width / 2 - 120,
-        y: this.height - 100,
+        y: this.height - 80,
         w: 240,
         h: 60,
-        color: '#7EC850',
-        text: '🔄 Yeni Tur',
-        textSize: 22,
-        action: 'newRound'
+        color: '#FFD700',
+        text: '🔄 Yeniden Başlat',
+        textSize: 20,
+        action: 'restartGame'
       });
     }
+  }
+
+  // Koşucu hariç herkes bombasını koydu mu?
+  allBombsPlaced() {
+    let count = 0;
+    for (const placer of this.placers) {
+      for (let r = 0; r < this.gridRows; r++) {
+        for (let c = 0; c < this.gridCols; c++) {
+          if (this.grid[r][c].type === 'bomb' && this.grid[r][c].owner === placer) {
+            count++;
+          }
+        }
+      }
+    }
+    return count >= this.bombsNeeded;
+  }
+
+  // Bir oyuncunun kaç bombası var?
+  countPlayerBombs(playerIdx) {
+    let count = 0;
+    for (let r = 0; r < this.gridRows; r++) {
+      for (let c = 0; c < this.gridCols; c++) {
+        if (this.grid[r][c].type === 'bomb' && this.grid[r][c].owner === playerIdx) {
+          count++;
+        }
+      }
+    }
+    return count;
   }
 
   countAdjacentBombs(row, col) {
@@ -241,8 +285,10 @@ export class BlockMine {
       const btn = this.hitTest(px, py);
       if (btn && btn.action === 'startGame') {
         this.state = 'BOMB_PLACING';
-        this.currentPlayer = 0;
-        this.bombsPlacedByPlayer = new Array(this.totalPlayers).fill(false);
+        this.currentRunner = 0;
+        this.currentPlacer = 0;
+        this.bombsPlacedCount = 0;
+        this.setupPlacers();
         this.defineButtons();
       }
       return;
@@ -251,21 +297,19 @@ export class BlockMine {
     if (this.state === 'BOMB_PLACING') {
       const btn = this.hitTest(px, py);
       if (btn && btn.action === 'bombPlaced') {
-        // Oyuncu bombasını koydu mu kontrol et
-        const hasBomb = this.playerHasBomb(this.currentPlayer);
-        if (!hasBomb) return; // Bomba koymadan ilerleyemez
-
-        // Bu oyuncu bombasını koydu
-        this.bombsPlacedByPlayer[this.currentPlayer] = true;
-
-        // Sonraki oyuncuya geç
-        this.currentPlayer++;
-
-        // Tüm oyuncular bombasını koydu mu?
-        if (this.currentPlayer >= this.totalPlayers) {
-          this.state = 'MOVING';
-          this.currentPlayer = 0;
-          this.currentPos = { ...this.playerPositions[0] };
+        // Sıradaki placer'a geç
+        this.currentPlacer++;
+        
+        // Tüm placer'lar bombasını koydu mu?
+        if (this.currentPlacer >= this.placers.length) {
+          // Herkesin 2 bombası var mı kontrol et
+          if (this.allBombsPlaced()) {
+            // Hareket aşamasına geç
+            this.state = 'MOVING';
+          } else {
+            // Başa dön, eksik bomba varsa tekrar
+            this.currentPlacer = 0;
+          }
         }
         this.defineButtons();
         return;
@@ -274,22 +318,16 @@ export class BlockMine {
       // Grid üzerinde bomba yerleştirme
       const cell = this.getGridCell(px, py);
       if (cell && this.grid[cell.row][cell.col].type === 'empty') {
-        // Başlangıç ve bitiş bölgelerine bomba konulamaz
         if (cell.col <= 1 || cell.col >= this.gridCols - 2) return;
 
-        // Bu oyuncunun önceki bombasını kaldır (yer değiştirme)
-        for (let r = 0; r < this.gridRows; r++) {
-          for (let c = 0; c < this.gridCols; c++) {
-            if (this.grid[r][c].type === 'bomb' && this.grid[r][c].owner === this.currentPlayer) {
-              this.grid[r][c].type = 'empty';
-              this.grid[r][c].owner = -1;
-            }
-          }
-        }
+        const placer = this.placers[this.currentPlacer];
+        
+        // Bu oyuncunun max bomba sayısını aştı mı?
+        if (this.countPlayerBombs(placer) >= this.maxBombsPerPlayer) return;
 
-        // Yeni bombayı yerleştir
+        // Bombayı yerleştir
         this.grid[cell.row][cell.col].type = 'bomb';
-        this.grid[cell.row][cell.col].owner = this.currentPlayer;
+        this.grid[cell.row][cell.col].owner = placer;
       }
       return;
     }
@@ -313,14 +351,22 @@ export class BlockMine {
             const bombOwner = this.grid[newRow][newCol].owner;
             this.scores[bombOwner]++;
             this.grid[newRow][newCol].type = 'exploded';
-            this.checkWinOrNext();
+            
+            if (this.checkWin()) return;
+            
+            // Sonraki koşucuya geç, harita yenilenir
+            this.nextRunner();
             return;
           }
 
           // Bitiş çizgisine ulaştı mı?
           if (newCol >= this.gridCols - 1) {
-            this.scores[this.currentPlayer]++;
-            this.checkWinOrNext();
+            this.scores[this.currentRunner]++;
+            
+            if (this.checkWin()) return;
+            
+            // Sonraki koşucuya geç, harita yenilenir
+            this.nextRunner();
             return;
           }
         }
@@ -328,16 +374,10 @@ export class BlockMine {
       return;
     }
 
-    if (this.state === 'GAME_OVER' || this.state === 'RESULT') {
+    if (this.state === 'GAME_OVER') {
       const btn = this.hitTest(px, py);
-      if (btn && btn.action === 'newRound') {
-        this.initGrid();
-        this.state = 'BOMB_PLACING';
-        this.currentPlayer = 0;
-        this.bombsPlacedByPlayer = new Array(this.totalPlayers).fill(false);
-        this.scores = new Array(this.totalPlayers).fill(0);
-        this.winner = -1;
-        this.defineButtons();
+      if (btn && btn.action === 'restartGame') {
+        this.resetGame();
       }
       return;
     }
@@ -346,36 +386,27 @@ export class BlockMine {
   onTouchMove(id, relX, relY) {}
   onTouchEnd(id, relX, relY) {}
 
-  // Oyuncunun grid üzerinde bombası var mı?
-  playerHasBomb(playerIdx) {
-    for (let r = 0; r < this.gridRows; r++) {
-      for (let c = 0; c < this.gridCols; c++) {
-        if (this.grid[r][c].type === 'bomb' && this.grid[r][c].owner === playerIdx) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  checkWinOrNext() {
+  checkWin() {
     for (let i = 0; i < this.totalPlayers; i++) {
       if (this.scores[i] >= 4) {
         this.winner = i;
         this.state = 'GAME_OVER';
         this.defineButtons();
-        return;
+        return true;
       }
     }
+    return false;
+  }
 
-    this.currentPlayer++;
-    if (this.currentPlayer >= this.totalPlayers) {
-      this.state = 'RESULT';
-      this.defineButtons();
-    } else {
-      this.currentPos = { ...this.playerPositions[this.currentPlayer] };
-      this.defineButtons();
+  nextRunner() {
+    // Sonraki koşucu
+    this.currentRunner++;
+    if (this.currentRunner >= this.totalPlayers) {
+      this.currentRunner = 0;
     }
+    
+    // Yeni tur: harita yenilenir, bombalar sıfırlanır
+    this.newRound();
   }
 
   getGridCell(px, py) {
@@ -431,16 +462,18 @@ export class BlockMine {
           this.ctx.fillText('💥', x + this.cellSize / 2, y + this.cellSize / 2);
         }
 
+        // Bomba yerleştirme aşamasında TÜM bombaları göster
         if (this.state === 'BOMB_PLACING' && cell.type === 'bomb') {
           this.ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
           this.ctx.fillRect(x + 4, y + 4, this.cellSize - 8, this.cellSize - 8);
           this.ctx.fillStyle = '#FFF';
-          this.ctx.font = `bold ${this.cellSize * 0.35}px "Segoe UI"`;
+          this.ctx.font = `bold ${this.cellSize * 0.3}px "Segoe UI"`;
           this.ctx.textAlign = 'center';
           this.ctx.textBaseline = 'middle';
           this.ctx.fillText(`P${cell.owner + 1}`, x + this.cellSize / 2, y + this.cellSize / 2);
         }
 
+        // Hareket aşamasında sayaç
         if (this.state === 'MOVING' && r === this.currentPos.row && c === this.currentPos.col) {
           const bombCount = this.countAdjacentBombs(r, c);
           if (bombCount > 0) {
@@ -480,34 +513,27 @@ export class BlockMine {
     const cx = x + s / 2;
     const cy = y + s / 2;
 
-    // Ayak
     this.ctx.fillStyle = '#3D2B1F';
     this.ctx.fillRect(cx - s * 0.18, cy + s * 0.25, s * 0.12, s * 0.15);
     this.ctx.fillRect(cx + s * 0.06, cy + s * 0.25, s * 0.12, s * 0.15);
 
-    // Beden
     this.ctx.fillStyle = color;
     this.ctx.fillRect(cx - s * 0.2, cy - s * 0.1, s * 0.4, s * 0.4);
 
-    // Kollar
     this.ctx.fillStyle = color;
     this.ctx.fillRect(cx - s * 0.3, cy - s * 0.05, s * 0.1, s * 0.25);
     this.ctx.fillRect(cx + s * 0.2, cy - s * 0.05, s * 0.1, s * 0.25);
 
-    // Kafa
     this.ctx.fillStyle = '#FFDDBB';
     this.ctx.fillRect(cx - s * 0.15, cy - s * 0.35, s * 0.3, s * 0.3);
 
-    // Saç
     this.ctx.fillStyle = '#3D2B1F';
     this.ctx.fillRect(cx - s * 0.15, cy - s * 0.35, s * 0.3, s * 0.1);
 
-    // Göz
     this.ctx.fillStyle = '#000';
     this.ctx.fillRect(cx - s * 0.08, cy - s * 0.25, s * 0.05, s * 0.06);
     this.ctx.fillRect(cx + s * 0.03, cy - s * 0.25, s * 0.05, s * 0.06);
 
-    // Ağız
     this.ctx.fillStyle = '#000';
     this.ctx.fillRect(cx - s * 0.04, cy - s * 0.12, s * 0.08, s * 0.02);
   }
@@ -546,11 +572,11 @@ export class BlockMine {
     if (this.state === 'MOVING') {
       const px = this.gridOffsetX + this.currentPos.col * this.cellSize;
       const py = this.gridOffsetY + this.currentPos.row * this.cellSize;
-      this.drawPlayer(px, py, this.currentPlayer);
+      this.drawPlayer(px, py, this.currentRunner);
     }
 
-    // Üst bilgi çubuğu
-    this.ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    // Üst bilgi
+    this.ctx.fillStyle = 'rgba(0,0,0,0.8)';
     this.ctx.fillRect(0, 0, this.width, 72);
     this.ctx.fillStyle = '#FFFFFF';
     this.ctx.font = 'bold 14px "Segoe UI"';
@@ -558,24 +584,19 @@ export class BlockMine {
 
     let infoText = '';
     if (this.state === 'MENU') {
-      infoText = '⛏️ BlockMine - Minecraft Mayın Tarlası';
+      infoText = '⛏️ BlockMine - Mayın Tarlası';
     } else if (this.state === 'BOMB_PLACING') {
-      const hasBomb = this.playerHasBomb(this.currentPlayer);
-      if (hasBomb) {
-        infoText = `Oyuncu ${this.currentPlayer + 1} - Bomban hazır! "💣 Bombayı Yerleştir"e bas`;
-      } else {
-        infoText = `Oyuncu ${this.currentPlayer + 1} - Haritaya tıkla, bombanı yerleştir`;
-      }
+      const placer = this.placers[this.currentPlacer];
+      const bombCount = this.countPlayerBombs(placer);
+      infoText = `Oyuncu ${placer + 1} bomba koyuyor (${bombCount}/${this.maxBombsPerPlayer}) - Koşucu: Oyuncu ${this.currentRunner + 1}`;
     } else if (this.state === 'MOVING') {
-      infoText = `Oyuncu ${this.currentPlayer + 1} hareket ediyor - Sarı bölgeye ulaş!`;
+      infoText = `🏃 Oyuncu ${this.currentRunner + 1} karşıya geçiyor! Sarı bölgeye ulaş!`;
     } else if (this.state === 'GAME_OVER') {
-      infoText = `🏆 Oyuncu ${this.winner + 1} KAZANDI! (4 puana ulaştı)`;
-    } else if (this.state === 'RESULT') {
-      infoText = '✅ Tur bitti! "Yeni Tur" ile devam et';
+      infoText = `🏆 Oyuncu ${this.winner + 1} KAZANDI!`;
     }
     this.ctx.fillText(infoText, this.width / 2, 30);
 
-    // Puan tablosu
+    // Puan
     let scoreText = '⭐ ';
     for (let i = 0; i < this.totalPlayers; i++) {
       scoreText += `P${i + 1}: ${this.scores[i]}/4`;
